@@ -1,0 +1,27 @@
+<?php
+$_['heading_title']          = 'Courier Center';
+$_['text_extension']         = 'Επεκτάσεις';
+$_['text_home']              = 'Αρχική';
+$_['text_success']           = 'Οι ρυθμίσεις αποθηκεύτηκαν!';
+$_['text_enabled']           = 'Ενεργό';
+$_['text_disabled']          = 'Ανενεργό';
+$_['entry_status']           = 'Κατάσταση';
+$_['entry_user_alias']       = 'User Alias';
+$_['entry_credential_value'] = 'Credential Value';
+$_['entry_api_key']          = 'API Key';
+$_['entry_billing_account']  = 'Billing Account';
+$_['entry_shipper_name']     = 'Επωνυμία Αποστολέα';
+$_['entry_shipper_address']  = 'Διεύθυνση Αποστολέα';
+$_['entry_shipper_postcode'] = 'ΤΚ Αποστολέα';
+$_['entry_shipper_city']     = 'Πόλη Αποστολέα';
+$_['entry_shipper_phone']    = 'Τηλέφωνο Αποστολέα';
+$_['entry_cost']             = 'Κόστος Αποστολής';
+$_['entry_cod_fee']          = 'Χρέωση Αντικαταβολής';
+$_['entry_tax_class']        = 'Κλάση Φόρου';
+$_['entry_geo_zone']         = 'Γεωγραφική Ζώνη';
+$_['entry_sort_order']       = 'Σειρά Εμφάνισης';
+$_['text_none']              = '--- Καμία ---';
+$_['text_all_zones']         = 'Όλες οι Ζώνες';
+$_['button_save']            = 'Αποθήκευση';
+$_['button_cancel']          = 'Ακύρωση';
+$_['error_permission']       = 'Δεν έχετε άδεια να τροποποιήσετε αυτή την επέκταση!';

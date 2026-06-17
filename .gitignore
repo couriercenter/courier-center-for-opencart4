@@ -1,0 +1,15 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# Temp / backup files
+_cc_*
+*.bak
+*.tmp
+*.log
+
+# Local-only setup helper backups
+cc_backup_*

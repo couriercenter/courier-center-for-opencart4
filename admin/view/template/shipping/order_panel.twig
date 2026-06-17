@@ -1,0 +1,349 @@
+<div id="cc-order-panel-raw" style="display:none">
+
+  {# ── STATE 1: Voided ──────────────────────────────────────────────── #}
+  {% if shipment and shipment.voucher_number and shipment.is_voided %}
+
+    <div style="background:#fce8e6; border-left:4px solid #dc3232; padding:12px; border-radius:3px; margin-bottom:10px;">
+      <strong>❌ Αποστολή Ακυρωμένη</strong><br>
+      <span style="font-size:13px;">AWB: <del>{{ shipment.voucher_number }}</del></span>
+    </div>
+    <p style="font-size:12px; color:#666;">Μπορείς να δημιουργήσεις νέο voucher.</p>
+
+  {# ── STATE 2: Active voucher ──────────────────────────────────────── #}
+  {% elseif shipment and shipment.voucher_number %}
+
+    {% set status_class = '' %}
+    {% if shipment.status_code in ['29','87'] %}
+      {% set status_class = 'cc-delivered' %}
+    {% elseif shipment.status_code in ['28','30'] %}
+      {% set status_class = 'cc-failed' %}
+    {% elseif shipment.status_code in ['25','99','14'] %}
+      {% set status_class = 'cc-returned' %}
+    {% endif %}
+
+    <style>
+      .cc-info-box { background:#e7f5e9; border-left:4px solid #46b450; padding:12px; border-radius:3px; margin-bottom:10px; }
+      .cc-info-box table { width:100%; font-size:13px; }
+      .cc-info-box td { padding:3px 0; vertical-align:top; }
+      .cc-info-box td:first-child { color:#555; width:120px; }
+      .cc-status { padding:8px 10px; border-left:4px solid #2271b1; background:#f0f6fc; border-radius:3px; margin:8px 0; font-size:12px; }
+      .cc-status.cc-delivered { background:#e7f5e9; border-left-color:#46b450; }
+      .cc-status.cc-failed    { background:#fff3cd; border-left-color:#dba617; }
+      .cc-status.cc-returned  { background:#fce8e6; border-left-color:#dc3232; }
+      .cc-return-awb { margin-top:8px; padding:8px; border-top:1px dashed #b8d4b8; font-size:12px; }
+      .cc-locker-box { background:#f0faf2; border:1px solid #7bc47f; border-radius:3px; padding:8px 10px; margin:8px 0; font-size:12px; }
+    </style>
+
+    <div class="cc-info-box">
+      <strong>✅ Voucher Δημιουργήθηκε</strong>
+      <table style="margin-top:6px;">
+        <tr><td>AWB:</td><td><strong>{{ shipment.voucher_number }}</strong></td></tr>
+        {% if shipment.tracking_number and shipment.tracking_number != shipment.voucher_number %}
+        <tr><td>Tracking:</td><td>{{ shipment.tracking_number }}</td></tr>
+        {% endif %}
+        <tr><td>Υπηρεσία:</td><td>{{ shipment.service_type }}</td></tr>
+      </table>
+
+      {% if shipment.is_boxnow %}
+      <div class="cc-locker-box">
+        <strong>📦 BOX NOW Locker</strong><br>
+        {% if shipment.locker_name %}
+        <span>{{ shipment.locker_name }}</span><br>
+        {% endif %}
+        {% if shipment.locker_id %}
+        <small style="color:#888;">ID: {{ shipment.locker_id }}</small>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if shipment.return_awb %}
+      <div class="cc-return-awb">
+        {% set return_labels = {'optional': 'Προαιρετικό', 'mandatory': 'Υποχρεωτικό'} %}
+        <strong>↩️ Επιστροφικό ({{ return_labels[shipment.return_option] ?? '' }})</strong><br>
+        Return AWB: <strong>{{ shipment.return_awb }}</strong>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if shipment.status_desc %}
+    <div class="cc-status {{ status_class }}">
+      <strong>📍 {{ shipment.status_desc }}</strong>
+      {% if shipment.status_updated_at %}
+      <br><small>Τελ. ενημέρωση: {{ shipment.status_updated_at }}</small>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
+      <a href="{{ download_url }}" class="btn btn-success btn-sm" target="_blank">
+        <i class="fa-solid fa-print"></i> Εκτύπωση Voucher (PDF)
+      </a>
+      {% if shipment.return_awb %}
+      <a href="{{ download_return_url }}" class="btn btn-secondary btn-sm" target="_blank">
+        <i class="fa-solid fa-rotate-left"></i> Επιστροφικό (PDF)
+      </a>
+      {% endif %}
+      <button type="button" class="btn btn-info btn-sm" onclick="ccUpdateStatus()">
+        <i class="fa-solid fa-rotate"></i> Ανανέωση
+      </button>
+      <button type="button" class="btn btn-danger btn-sm" onclick="ccVoidShipment()">
+        <i class="fa-solid fa-xmark"></i> Ακύρωση
+      </button>
+    </div>
+
+  {# ── STATE 3: BOX NOW (specific locker from checkout) ─────────────── #}
+  {% elseif locker_id and delivery_mode == 'pick' %}
+
+    <div style="background:#f0faf2; border:1px solid #7bc47f; border-radius:4px; padding:10px 12px; margin-bottom:10px;">
+      <strong>📦 BOX NOW Locker (επιλεγμένο από πελάτη)</strong><br>
+      <span style="font-size:13px; color:#2c6e35;">{{ locker_name ?: locker_id }}</span><br>
+      <small style="color:#888;">ID: {{ locker_id }}</small>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" style="width:100%; margin-bottom:6px;"
+            onclick="ccCreateVoucher('next_day', true, 'none', 1, '{{ locker_id }}', '{{ locker_code }}', '{{ locker_name }}', 'pick')">
+      <i class="fa fa-plus"></i> Δημιουργία BOX NOW Voucher
+    </button>
+    <button type="button" class="btn btn-warning btn-sm" style="width:100%;" onclick="ccRemoveBoxNow()">
+      ↩️ Αφαίρεση BOX NOW
+    </button>
+
+  {# ── STATE 4: BOX NOW (auto mode from checkout) ───────────────────── #}
+  {% elseif delivery_mode == 'auto' %}
+
+    <div style="background:#fff8e1; border:1px solid #ffc107; border-radius:4px; padding:10px 12px; margin-bottom:10px;">
+      <strong>📦 BOX NOW — Αυτόματη εύρεση Locker</strong><br>
+      <span style="font-size:12px; color:#7a6000;">Κοντινότερο διαθέσιμο BOX NOW Locker</span>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" style="width:100%; margin-bottom:6px;"
+            onclick="ccCreateVoucher('next_day', true, 'none', 1, '', '', '', 'auto')">
+      <i class="fa fa-plus"></i> Δημιουργία BOX NOW Voucher
+    </button>
+    <button type="button" class="btn btn-warning btn-sm" style="width:100%;" onclick="ccRemoveBoxNow()">
+      ↩️ Αφαίρεση BOX NOW
+    </button>
+
+  {# ── STATE 5: No voucher — normal form ────────────────────────────── #}
+  {% else %}
+
+    <style>
+      .cc-form-section { border:1px solid #ddd; border-radius:4px; padding:10px; margin:8px 0; background:#f9f9f9; }
+      .cc-form-section label { font-weight:600; display:block; margin-bottom:6px; font-size:13px; }
+      .cc-radio-row { display:block; padding:5px 4px; border-radius:3px; cursor:pointer; font-size:13px; line-height:1.4; }
+      .cc-radio-row:hover { background:#edf1f5; }
+      .cc-radio-row small { color:#666; display:block; margin-left:20px; }
+    </style>
+
+    <p style="margin-bottom:10px; font-size:13px;">Δημιούργησε voucher για αυτή την παραγγελία:</p>
+
+    <div class="cc-form-section">
+      <label>📦 Υπηρεσία:</label>
+      <select id="cc-service-type" class="form-control form-control-sm">
+        <option value="next_day">Επόμενη Μέρα</option>
+        <option value="same_day_3h">Αυθημερόν 3 ώρες</option>
+        <option value="same_day_5h">Αυθημερόν 5 ώρες</option>
+      </select>
+    </div>
+
+    <div class="cc-form-section">
+      <label>📦 Πολλαπλά τεμάχια:</label>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:normal;">
+        <input type="checkbox" id="cc-multi-parcel">
+        <span style="font-size:13px;">Ενεργοποίηση πολλαπλών τεμαχίων</span>
+      </label>
+      <div id="cc-parcel-wrap" style="display:none; margin-top:8px;">
+        <label style="font-size:12px; display:flex; align-items:center; gap:6px; font-weight:normal;">
+          Αριθμός τεμαχίων:
+          <input type="number" id="cc-parcel-count" value="2" min="2" max="99" class="form-control form-control-sm" style="width:70px;">
+        </label>
+      </div>
+    </div>
+
+    <div class="cc-form-section">
+      <label>↩️ Επιστροφικό:</label>
+      <label class="cc-radio-row">
+        <input type="radio" name="cc-return" value="none" checked> Χωρίς επιστροφικό
+      </label>
+      <label class="cc-radio-row">
+        <input type="radio" name="cc-return" value="optional"> <strong>Προαιρετικό</strong>
+        <small>Ο παραλήπτης μπορεί να το ενεργοποιήσει αργότερα</small>
+      </label>
+      <label class="cc-radio-row">
+        <input type="radio" name="cc-return" value="mandatory"> <strong>Υποχρεωτικό</strong>
+        <small>Ο courier παραλαμβάνει επιστροφικό κατά την παράδοση</small>
+      </label>
+    </div>
+
+    <div class="cc-form-section">
+      <label style="display:flex; align-items:center; gap:8px; font-weight:normal; cursor:pointer;">
+        <input type="checkbox" id="cc-boxnow">
+        <span><strong>📦 BOX NOW Locker</strong><br>
+        <small style="color:#666; font-weight:normal;">Αυτόματη αναζήτηση σε ακτίνα 1.5km</small></span>
+      </label>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-sm" style="width:100%;" onclick="ccCreateVoucherFromForm()">
+      <i class="fa fa-plus"></i> Δημιουργία Voucher
+    </button>
+
+  {% endif %}
+
+  <div id="cc-msg" style="margin-top:10px;"></div>
+
+</div>
+
+<script>
+(function() {
+  var ccOrderId = {{ order_id }};
+  var ccToken   = '{{ user_token }}';
+
+  // ── Inject into OC4 tab ───────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    var raw = document.getElementById('cc-order-panel-raw');
+    if (!raw) return;
+
+    var navTabs    = document.querySelector('ul.nav-tabs');
+    var tabContent = navTabs ? navTabs.closest('.card-body, .card, div').querySelector('.tab-content') : null;
+
+    if (!navTabs || !tabContent) {
+      raw.style.display = '';
+      return;
+    }
+
+    var li = document.createElement('li');
+    li.className = 'nav-item';
+    var a = document.createElement('a');
+    a.href = '#tab-courier-center';
+    a.setAttribute('data-bs-toggle', 'tab');
+    a.className = 'nav-link';
+    a.innerHTML = '<i class="fa fa-truck"></i> Courier Center';
+    li.appendChild(a);
+    navTabs.appendChild(li);
+
+    var pane = document.createElement('div');
+    pane.id = 'tab-courier-center';
+    pane.className = 'tab-pane';
+    pane.style.padding = '15px 0';
+    pane.innerHTML = raw.innerHTML;
+    tabContent.appendChild(pane);
+    raw.remove();
+
+    // Multi-parcel toggle
+    var multiCb = pane.querySelector('#cc-multi-parcel');
+    if (multiCb) {
+      multiCb.addEventListener('change', function() {
+        var wrap = pane.querySelector('#cc-parcel-wrap');
+        if (wrap) wrap.style.display = this.checked ? '' : 'none';
+      });
+    }
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  var ccTokenEndpoint = '{{ token_endpoint }}';
+
+  function ccPost(url, params, cb, isRetry) {
+    params.user_token = ccToken;
+    url = url.replace(/&amp;/g, '&').replace(/([?&]user_token=)[^&]*/, '$1' + encodeURIComponent(ccToken));
+    fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(params).toString()
+    })
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var parsed = null;
+      try { parsed = JSON.parse(text); } catch(e) {}
+      if (parsed) { cb(parsed); return; }
+
+      // Non-JSON = OC4 returned the login page (stale token). The session cookie
+      // is still valid — fetch the current token and retry ONCE transparently.
+      // (A login-page response means the controller never ran, so retry is safe.)
+      if (isRetry) {
+        ccMsg('danger', 'Η σύνοδος (session) έληξε. Κάνε ανανέωση της σελίδας (Ctrl+Shift+R) και ξαναπροσπάθησε.');
+        return;
+      }
+      fetch(ccTokenEndpoint, {credentials: 'include'})
+        .then(function(r) { return r.json(); })
+        .then(function(info) {
+          if (info && info.logged_in && info.user_token) {
+            ccToken = info.user_token;
+            ccPost(url, params, cb, true);
+          } else {
+            ccMsg('danger', 'Η σύνοδος (session) έληξε. Κάνε login ξανά και ξαναπροσπάθησε.');
+          }
+        })
+        .catch(function() {
+          ccMsg('danger', 'Η σύνοδος (session) έληξε. Κάνε ανανέωση της σελίδας (Ctrl+Shift+R) και ξαναπροσπάθησε.');
+        });
+    })
+    .catch(function(e) { ccMsg('danger', e.toString()); });
+  }
+
+  function ccMsg(type, text) {
+    var el = document.getElementById('cc-msg');
+    if (el) el.innerHTML = '<div class="alert alert-' + type + '">' + text + '</div>';
+  }
+
+  // Reload the order page using the current (possibly refreshed) token, so the
+  // reload itself doesn't hit OC4's login redirect with a stale URL token.
+  function ccReload() {
+    var href = window.location.href;
+    if (/[?&]user_token=/.test(href)) {
+      href = href.replace(/([?&]user_token=)[^&]*/, '$1' + encodeURIComponent(ccToken));
+    }
+    window.location.href = href;
+  }
+
+  // ── Voucher from form (normal mode) ──────────────────────────────
+  window.ccCreateVoucherFromForm = function() {
+    var pane    = document.getElementById('tab-courier-center') || document;
+    var service = (pane.querySelector('#cc-service-type') || {}).value || 'next_day';
+    var multi   = pane.querySelector('#cc-multi-parcel');
+    var parcels = (multi && multi.checked) ? parseInt((pane.querySelector('#cc-parcel-count') || {}).value || 2) : 1;
+    var ret     = (pane.querySelector('input[name="cc-return"]:checked') || {}).value || 'none';
+    var boxnow  = (pane.querySelector('#cc-boxnow') || {}).checked ? 1 : 0;
+    ccCreateVoucher(service, boxnow, ret, parcels, '', '', '', '');
+  };
+
+  // ── Voucher creation ──────────────────────────────────────────────
+  window.ccCreateVoucher = function(service, boxnow, returnOpt, parcels, lockerId, lockerCode, lockerName, deliveryMode) {
+    ccPost('{{ ajax_create }}', {
+      order_id: ccOrderId,
+      service_type: service || 'next_day',
+      parcel_count: parcels || 1,
+      return_option: returnOpt || 'none',
+      boxnow: boxnow ? 1 : 0,
+      locker_id: lockerId || '',
+      locker_code: lockerCode || '',
+      locker_name: lockerName || '',
+      delivery_mode: deliveryMode || ''
+    }, function(r) {
+      if (r.success) { ccReload(); }
+      else { ccMsg('danger', r.error || 'Σφάλμα δημιουργίας voucher'); }
+    });
+  };
+
+  window.ccVoidShipment = function() {
+    if (!confirm('Ακύρωση αποστολής;')) return;
+    ccPost('{{ ajax_void }}', {order_id: ccOrderId}, function(r) {
+      if (r.success) { ccReload(); }
+      else { ccMsg('danger', r.error || 'Σφάλμα ακύρωσης'); }
+    });
+  };
+
+  window.ccUpdateStatus = function() {
+    ccPost('{{ ajax_status }}', {order_id: ccOrderId}, function(r) {
+      if (r.success) { ccReload(); }
+      else { ccMsg('danger', r.error || 'Σφάλμα ανανέωσης'); }
+    });
+  };
+
+  window.ccRemoveBoxNow = function() {
+    if (!confirm('Αφαίρεση BOX NOW από αυτή την παραγγελία;')) return;
+    ccPost('{{ ajax_remove_bn }}', {order_id: ccOrderId}, function(r) {
+      if (r.success) { ccReload(); }
+      else { ccMsg('danger', r.error || 'Σφάλμα αφαίρεσης BOX NOW'); }
+    });
+  };
+})();
+</script>

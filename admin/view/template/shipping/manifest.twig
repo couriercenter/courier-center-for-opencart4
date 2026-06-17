@@ -1,0 +1,77 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <a href="{{ url_settings }}" class="btn btn-default">
+          <i class="fa fa-cog"></i> Ρυθμίσεις
+        </a>
+      </div>
+      <h1><i class="fa fa-truck"></i> Manifest Παραλαβής</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <p class="text-muted">Εκτυπώστε τη λίστα αποστολών που θα παραληφθούν από τον οδηγό για μια συγκεκριμένη ημέρα.</p>
+
+    <div class="panel panel-default" style="max-width:700px;">
+      <div class="panel-heading"><h3 class="panel-title">📅 Επιλογή Ημερομηνίας</h3></div>
+      <div class="panel-body">
+
+        <form method="get" action="{{ url_self }}" class="form-inline" style="gap:10px; display:flex; align-items:flex-end; flex-wrap:wrap;">
+          <div>
+            <label class="control-label" style="display:block; margin-bottom:4px;">Ημερομηνία παραλαβής:</label>
+            <input type="date" name="manifest_date" value="{{ selected_date }}" class="form-control"
+                   max="{{ today }}" style="width:180px;">
+          </div>
+          <button type="submit" class="btn btn-default">Ενημέρωση</button>
+        </form>
+
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <a href="{{ url_self }}&manifest_date={{ today }}"
+             class="btn btn-xs btn-default{% if selected_date == today %} active{% endif %}">
+            📅 Σήμερα
+          </a>
+          <a href="{{ url_self }}&manifest_date={{ yesterday }}"
+             class="btn btn-xs btn-default{% if selected_date == yesterday %} active{% endif %}">
+            ← Χθες
+          </a>
+          <a href="{{ url_self }}&manifest_date={{ day_before }}"
+             class="btn btn-xs btn-default{% if selected_date == day_before %} active{% endif %}">
+            ← Προχθές
+          </a>
+        </div>
+
+        <div style="margin-top:16px; padding:12px 16px; background:#f0f6fc; border-left:4px solid #2271b1; border-radius:3px;">
+          <strong>📦 {{ vouchers_count }} vouchers</strong> για <strong>{{ greek_date }}</strong>
+          {% if vouchers_count == 0 %}
+          <br><small style="color:#8b0000;">Δεν έχουν δημιουργηθεί vouchers για αυτή την ημερομηνία. Το manifest μπορεί να είναι κενό.</small>
+          {% endif %}
+        </div>
+
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+          <a href="{{ url_download }}" target="_blank" class="btn btn-primary">
+            <i class="fa fa-file-pdf-o"></i> Προβολή Manifest PDF
+          </a>
+          <a href="{{ url_download_save }}" class="btn btn-default">
+            <i class="fa fa-download"></i> Αποθήκευση ως αρχείο
+          </a>
+        </div>
+
+        <div style="margin-top:20px; padding:12px 16px; background:#fff8e1; border-left:4px solid #ffc107; border-radius:3px; font-size:13px; line-height:1.6;">
+          <strong>💡 Πώς λειτουργεί:</strong><br>
+          • Το Manifest παράγεται απευθείας από το σύστημα της Courier Center.<br>
+          • Δώστε εκτυπωμένο το manifest στον οδηγό — θα το υπογράψει ως απόδειξη παραλαβής.<br>
+          • Αν αποστολή δεν εμφανίζεται, επικοινωνήστε με την Courier Center.
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{{ footer }}

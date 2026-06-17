@@ -1,0 +1,287 @@
+<div id="cc-boxnow-wrap" style="display:none;">
+  <div id="cc-bn-widget" class="cc-bn-box">
+    <input type="hidden" id="cc_boxnow_locker_id" value="{{ sel_locker_id }}">
+    <input type="hidden" id="cc_boxnow_locker_code" value="">
+    <input type="hidden" id="cc_boxnow_locker_name" value="{{ sel_locker_name }}">
+    <input type="hidden" id="cc_boxnow_delivery_mode" value="{{ sel_mode }}">
+
+    <label class="cc-bn-toggle">
+      <input type="checkbox" id="cc-bn-checkbox"{% if sel_selected %} checked{% endif %}>
+      <span class="cc-bn-logo">📦 BOX NOW</span>
+      <span class="cc-bn-toggle-text">Παράδοση σε <strong>BOX NOW Locker</strong></span>
+    </label>
+
+    <div id="cc-bn-options" class="cc-bn-options{% if sel_selected %} cc-visible{% endif %}">
+
+      <div id="cc-bn-mode-select" class="cc-bn-mode-select{% if not sel_mode %} cc-visible{% endif %}">
+        <p class="cc-bn-mode-label">Πώς θέλεις να παραλάβεις;</p>
+        <div class="cc-bn-mode-buttons">
+          <button type="button" id="cc-bn-auto-btn" class="cc-bn-btn">
+            <strong>Αυτόματη εύρεση</strong>
+            <small>Κοντινότερο διαθέσιμο Locker</small>
+          </button>
+          <button type="button" id="cc-bn-pick-btn" class="cc-bn-btn cc-bn-btn-primary">
+            <strong>Επιλογή από χάρτη</strong>
+            <small>Διάλεξε συγκεκριμένο Locker</small>
+          </button>
+        </div>
+      </div>
+
+      <div id="cc-bn-auto-confirm" class="cc-bn-confirm{% if sel_mode == 'auto' %} cc-visible{% endif %}">
+        <span class="cc-bn-check">✓</span>
+        <span>Θα παραδοθεί στο κοντινότερο διαθέσιμο BOX NOW Locker</span>
+        <button type="button" id="cc-bn-auto-change" class="cc-bn-change">Αλλαγή</button>
+      </div>
+
+      <div id="cc-bn-selected-info" class="cc-bn-confirm{% if sel_mode == 'pick' and sel_locker_name %} cc-visible{% endif %}">
+        <span class="cc-bn-check">✓</span>
+        <span id="cc-bn-selected-name">{{ sel_locker_name }}</span>
+        <button type="button" id="cc-bn-change" class="cc-bn-change">Αλλαγή</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="cc-bn-overlay">
+    <div id="cc-bn-modal" role="dialog" aria-modal="true">
+      <div id="cc-bn-modal-header">
+        <span>📦 Επιλογή BOX NOW Locker</span>
+        <button type="button" id="cc-bn-close" aria-label="Κλείσιμο">✕</button>
+      </div>
+      <a href="javascript:;" class="boxnow-map-widget-button" aria-hidden="true" tabindex="-1" style="display:none;"></a>
+      <div id="boxnowmap"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cc-bn-box { border:1px solid #d9e0e6; border-radius:8px; padding:14px 16px; margin:0 0 16px; background:#fff; }
+  .cc-bn-box.cc-has-error { border-color:#c53030; }
+  .cc-bn-toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:15px; margin:0; }
+  .cc-bn-toggle input { width:18px; height:18px; cursor:pointer; }
+  .cc-bn-logo { font-weight:700; color:#1a1a1a; background:#f3f4f6; padding:2px 8px; border-radius:4px; white-space:nowrap; }
+  .cc-bn-toggle-text { color:#2c3338; }
+  .cc-bn-options { display:none; margin-top:12px; padding-top:12px; border-top:1px solid #eef1f4; }
+  .cc-bn-options.cc-visible { display:block; }
+  .cc-bn-mode-select { display:none; }
+  .cc-bn-mode-select.cc-visible { display:block; }
+  .cc-bn-mode-label { margin:0 0 8px; font-size:13px; color:#555; }
+  .cc-bn-mode-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+  .cc-bn-btn { flex:1 1 160px; text-align:left; border:1px solid #d9e0e6; background:#fff; border-radius:6px; padding:10px 12px; cursor:pointer; transition:.15s; }
+  .cc-bn-btn:hover { border-color:#5dc122; background:#f6fcef; }
+  .cc-bn-btn strong { display:block; font-size:14px; color:#1a1a1a; }
+  .cc-bn-btn small { display:block; color:#777; font-size:12px; margin-top:2px; }
+  .cc-bn-btn-primary { border-color:#5dc122; }
+  .cc-bn-confirm { display:none; align-items:center; gap:8px; background:#f0faf2; border:1px solid #7bc47f; border-radius:6px; padding:9px 12px; font-size:13px; color:#2c6e35; }
+  .cc-bn-confirm.cc-visible { display:flex; }
+  .cc-bn-check { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:#5dc122; color:#fff; border-radius:50%; font-size:12px; flex-shrink:0; }
+  .cc-bn-change { margin-left:auto; background:none; border:none; color:#2271b1; cursor:pointer; font-size:13px; text-decoration:underline; padding:0; }
+  .cc-bn-error { display:flex; align-items:center; gap:6px; margin-top:10px; padding:8px 10px; background:#fce8e6; border:1px solid #f5c2c0; border-radius:6px; color:#c53030; font-size:13px; }
+
+  #cc-bn-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:99999; align-items:center; justify-content:center; padding:16px; }
+  #cc-bn-overlay.cc-open { display:flex; }
+  #cc-bn-modal { background:#fff; border-radius:10px; width:100%; max-width:760px; height:80vh; max-height:680px; display:flex; flex-direction:column; overflow:hidden; }
+  #cc-bn-modal-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #eef1f4; font-weight:600; }
+  #cc-bn-close { background:none; border:none; font-size:18px; cursor:pointer; color:#666; line-height:1; }
+  #boxnowmap { flex:1; min-height:0; }
+  body.cc-bn-modal-open { overflow:hidden; }
+</style>
+
+<script type="text/javascript">
+(function() {
+  var PARTNER_ID = {{ partner_id }};
+  var SAVE_URL   = '{{ save_url }}';
+  var ALLOWED_SHIPPING = {{ allowed_shipping_json }};
+  var sdkLoaded  = false;
+
+  // BOX NOW map SDK config — must exist before the SDK script loads.
+  window._bn_map_widget_config = {
+    partnerId: PARTNER_ID,
+    parentElement: '#boxnowmap',
+    afterSelect: function(selected) {
+      setVal('cc_boxnow_locker_id',   selected.boxnowLockerId || '');
+      setVal('cc_boxnow_locker_code', selected.boxnowLockerId || '');
+      setVal('cc_boxnow_locker_name', selected.boxnowLockerAddressLine1 || '');
+      var nameEl = document.getElementById('cc-bn-selected-name');
+      if (nameEl) nameEl.textContent = selected.boxnowLockerAddressLine1 || '';
+      closeModal();
+      show('cc-bn-selected-info'); hide('cc-bn-mode-select'); hide('cc-bn-auto-confirm');
+      syncSession();
+    }
+  };
+
+  function $id(id) { return document.getElementById(id); }
+  function setVal(id, v) { var e = $id(id); if (e) e.value = v; }
+  function getVal(id) { var e = $id(id); return e ? e.value : ''; }
+  function show(id) { var e = $id(id); if (e) e.classList.add('cc-visible'); }
+  function hide(id) { var e = $id(id); if (e) e.classList.remove('cc-visible'); }
+
+  function syncSession() {
+    var checked = $id('cc-bn-checkbox') && $id('cc-bn-checkbox').checked;
+    var body = new URLSearchParams();
+    body.append('selected', checked ? '1' : '');
+    body.append('delivery_mode', getVal('cc_boxnow_delivery_mode'));
+    body.append('locker_id',   getVal('cc_boxnow_locker_id'));
+    body.append('locker_code', getVal('cc_boxnow_locker_code'));
+    body.append('locker_name', getVal('cc_boxnow_locker_name'));
+    fetch(SAVE_URL, { method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body.toString() })
+      .catch(function(){});
+  }
+
+  function openModal() { var o = $id('cc-bn-overlay'); if (o) o.classList.add('cc-open'); document.body.classList.add('cc-bn-modal-open'); }
+  function closeModal() { var o = $id('cc-bn-overlay'); if (o) o.classList.remove('cc-open'); document.body.classList.remove('cc-bn-modal-open'); }
+
+  function freshMap() { var m = $id('boxnowmap'); if (m) { var n = document.createElement('div'); n.id = 'boxnowmap'; m.parentNode.replaceChild(n, m); } }
+
+  function loadSdk(cb) {
+    var existing = document.querySelector('script[src*="widget-cdn.boxnow.gr"]');
+    if (existing) existing.remove();
+    sdkLoaded = false;
+    var s = document.createElement('script');
+    s.src = 'https://widget-cdn.boxnow.gr/map-widget/client/v5.js';
+    s.async = false;
+    s.onload = function() { sdkLoaded = true; if (cb) cb(); };
+    s.onerror = function() { showError('Ο χάρτης δεν είναι διαθέσιμος αυτή τη στιγμή. Δοκίμασε την «Αυτόματη εύρεση».'); closeModal(); show('cc-bn-mode-select'); };
+    document.head.appendChild(s);
+  }
+
+  function openPickModal() {
+    freshMap();
+    openModal();
+    loadSdk(function() {
+      var btn = document.querySelector('.boxnow-map-widget-button');
+      if (btn) btn.click();
+    });
+  }
+
+  function resetOptions() {
+    closeModal(); freshMap();
+    setVal('cc_boxnow_locker_id',''); setVal('cc_boxnow_locker_code','');
+    setVal('cc_boxnow_locker_name',''); setVal('cc_boxnow_delivery_mode','');
+    hide('cc-bn-auto-confirm'); hide('cc-bn-selected-info'); show('cc-bn-mode-select');
+  }
+
+  function clearError() {
+    var w = $id('cc-bn-widget'); if (w) w.classList.remove('cc-has-error');
+    var e = $id('cc-bn-validation'); if (e) e.remove();
+  }
+  function showError(msg) {
+    var w = $id('cc-bn-widget'); if (!w) return;
+    w.classList.add('cc-has-error');
+    if (!$id('cc-bn-validation')) {
+      var d = document.createElement('div');
+      d.id = 'cc-bn-validation'; d.className = 'cc-bn-error';
+      d.innerHTML = '<span>⚠️</span><span>' + msg + '</span>';
+      w.appendChild(d);
+    }
+    w.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var wrap = $id('cc-boxnow-wrap');
+    if (!wrap) return;
+
+    // Relocate the widget under the shipping-method block; move modal to <body>.
+    var widget = $id('cc-bn-widget');
+    var overlay = $id('cc-bn-overlay');
+    var anchor = $id('checkout-shipping-method') || $id('checkout-payment-method');
+    if (widget && anchor) { anchor.parentNode.insertBefore(widget, anchor.nextSibling); }
+    if (overlay) { document.body.appendChild(overlay); }
+    wrap.style.display = '';
+
+    // ── Show BOX NOW only when "Courier Center" shipping is selected (v1.3.8) ──
+    function ccShippingIsCC() {
+      if (!ALLOWED_SHIPPING || !ALLOWED_SHIPPING.length) return false;
+      var el = $id('input-shipping-code');
+      var code = el ? String(el.value || '') : '';
+      if (!code) {
+        var radio = document.querySelector('input[name="shipping_method"]:checked');
+        code = radio ? String(radio.value || '') : '';
+      }
+      if (!code) return false;
+      var prefix = code.split('.')[0]; // "courier_center.courier_center" → "courier_center"
+      return ALLOWED_SHIPPING.indexOf(prefix) !== -1;
+    }
+    function ccUpdateVisibility() {
+      var w = $id('cc-bn-widget');
+      if (!w) return;
+      if (ccShippingIsCC()) {
+        w.style.display = '';
+      } else {
+        w.style.display = 'none';
+        var box = $id('cc-bn-checkbox');
+        if (box && box.checked) { box.checked = false; box.dispatchEvent(new Event('change')); }
+      }
+    }
+    // Initial state + re-check whenever the confirm block reloads (which happens
+    // right after the shipping/payment method changes).
+    ccUpdateVisibility();
+    var confirmEl = $id('checkout-confirm');
+    if (confirmEl && window.MutationObserver) {
+      new MutationObserver(function() { ccUpdateVisibility(); }).observe(confirmEl, { childList: true });
+    }
+    document.addEventListener('click', function(e) {
+      if (e.target.closest && e.target.closest('#checkout-shipping-method, #modal-shipping')) {
+        setTimeout(ccUpdateVisibility, 450);
+      }
+    });
+
+    // Toggle
+    var cb = $id('cc-bn-checkbox');
+    if (cb) cb.addEventListener('change', function() {
+      if (this.checked) { show('cc-bn-options'); }
+      else { hide('cc-bn-options'); resetOptions(); }
+      clearError(); syncSession();
+    });
+
+    // Auto
+    var autoBtn = $id('cc-bn-auto-btn');
+    if (autoBtn) autoBtn.addEventListener('click', function() {
+      setVal('cc_boxnow_delivery_mode','auto'); setVal('cc_boxnow_locker_id','');
+      hide('cc-bn-mode-select'); hide('cc-bn-selected-info'); show('cc-bn-auto-confirm');
+      clearError(); syncSession();
+    });
+
+    // Pick (map)
+    var pickBtn = $id('cc-bn-pick-btn');
+    if (pickBtn) pickBtn.addEventListener('click', function() {
+      setVal('cc_boxnow_delivery_mode','pick');
+      hide('cc-bn-mode-select'); hide('cc-bn-auto-confirm'); hide('cc-bn-selected-info');
+      openPickModal();
+    });
+
+    // Change buttons
+    var ch = $id('cc-bn-change');
+    if (ch) ch.addEventListener('click', function() { setVal('cc_boxnow_locker_id',''); setVal('cc_boxnow_locker_name',''); hide('cc-bn-selected-info'); openPickModal(); });
+    var ach = $id('cc-bn-auto-change');
+    if (ach) ach.addEventListener('click', function() { resetOptions(); clearError(); syncSession(); });
+
+    // Modal close
+    var close = $id('cc-bn-close');
+    if (close) close.addEventListener('click', function() {
+      closeModal();
+      if (!$id('cc-bn-selected-info').classList.contains('cc-visible')) show('cc-bn-mode-select');
+    });
+    if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) { close.click(); } });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && overlay.classList.contains('cc-open')) close.click(); });
+
+    // Soft guard (NEVER blocks the payment "Confirm" button — that would break
+    // checkout for other payment methods). If BOX NOW is toggled on but a mode
+    // hasn't been chosen yet, default to "auto" (nearest locker) so the choice
+    // is always complete. A pick-without-locker simply falls back to auto too.
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest && e.target.closest('#button-confirm');
+      if (!btn) return;
+      if (!cb || !cb.checked) return;
+      var mode = getVal('cc_boxnow_delivery_mode');
+      if (!mode || (mode === 'pick' && !getVal('cc_boxnow_locker_id'))) {
+        setVal('cc_boxnow_delivery_mode', 'auto');
+        setVal('cc_boxnow_locker_id', '');
+        hide('cc-bn-mode-select'); hide('cc-bn-selected-info'); show('cc-bn-auto-confirm');
+        syncSession();
+      }
+    });
+  });
+})();
+</script>

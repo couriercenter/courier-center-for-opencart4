@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `oc_cc_shipments` (
+  `id`               INT(11)      NOT NULL AUTO_INCREMENT,
+  `order_id`         INT(11)      NOT NULL,
+  `voucher_number`   VARCHAR(64)  DEFAULT NULL,
+  `tracking_number`  VARCHAR(64)  DEFAULT NULL,
+  `service_type`     VARCHAR(32)  DEFAULT NULL,
+  `return_option`    VARCHAR(16)  NOT NULL DEFAULT 'none',
+  `return_awb`       VARCHAR(64)  DEFAULT NULL,
+  `is_boxnow`        TINYINT(1)   NOT NULL DEFAULT 0,
+  `locker_id`        VARCHAR(64)  DEFAULT NULL,
+  `locker_code`      VARCHAR(64)  DEFAULT NULL,
+  `locker_name`      VARCHAR(255) DEFAULT NULL,
+  `status_code`      VARCHAR(8)   DEFAULT NULL,
+  `status_desc`      VARCHAR(255) DEFAULT NULL,
+  `is_voided`        TINYINT(1)   NOT NULL DEFAULT 0,
+  `is_final`         TINYINT(1)   NOT NULL DEFAULT 0,
+  `last_checked_at`  INT(11)      DEFAULT NULL,
+  `status_updated_at` DATETIME    DEFAULT NULL,
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `order_id` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

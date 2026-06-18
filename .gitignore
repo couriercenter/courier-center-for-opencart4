@@ -13,3 +13,6 @@ _cc_*
 
 # Local-only setup helper backups
 cc_backup_*
+
+# Deployment guide is distributed separately, not bundled with the extension
+DEPLOYMENT-GUIDE.md

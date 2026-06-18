@@ -63,7 +63,9 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
         $mode        = (string)($this->request->post['delivery_mode'] ?? '');
         $locker_id   = trim((string)($this->request->post['locker_id']   ?? ''));
         $locker_code = trim((string)($this->request->post['locker_code'] ?? ''));
-        $locker_name = trim((string)($this->request->post['locker_name'] ?? ''));
+        // The BOX NOW map SDK returns the address HTML-encoded (e.g. "&amp;").
+        // Decode it once so the stored/displayed locker name reads cleanly.
+        $locker_name = trim(html_entity_decode((string)($this->request->post['locker_name'] ?? ''), ENT_QUOTES, 'UTF-8'));
 
         if (!$selected) {
             unset($this->session->data['cc_boxnow']);

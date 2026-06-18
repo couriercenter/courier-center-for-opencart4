@@ -57,7 +57,6 @@ class CourierCenterEmail extends \Opencart\System\Engine\Controller {
 
         $store_name = (string)$this->config->get('config_name');
 
-        $this->load->library('mail');
         $mail_option = [
             'parameter'     => $this->config->get('config_mail_parameter'),
             'smtp_hostname' => $this->config->get('config_mail_smtp_hostname'),
@@ -67,14 +66,26 @@ class CourierCenterEmail extends \Opencart\System\Engine\Controller {
             'smtp_timeout'  => $this->config->get('config_mail_smtp_timeout'),
         ];
 
-        $mail = new \Opencart\System\Library\Mail($this->config->get('config_mail_engine'), $mail_option);
-        $mail->setTo($email);
-        $mail->setFrom($this->config->get('config_email'));
-        $mail->setSender($store_name);
-        $mail->setSubject('Στοιχεία Αποστολής — Παραγγελία #' . $order_id);
-        $mail->setHtml($this->buildHtmlEmail($shipment['voucher_number'], $tracking_url, $name));
-        $mail->setText($this->buildPlainEmail($shipment['voucher_number'], $tracking_url));
-        $mail->send();
+        // Fall back to the PHP "mail" adaptor if the store hasn't picked a mail
+        // engine yet — an empty engine would otherwise throw and abort the order
+        // status flow. Wrap the send so a mail failure never breaks checkout/admin.
+        $engine = (string)$this->config->get('config_mail_engine');
+        if ($engine === '') {
+            $engine = 'mail';
+        }
+
+        try {
+            $mail = new \Opencart\System\Library\Mail($engine, $mail_option);
+            $mail->setTo($email);
+            $mail->setFrom($this->config->get('config_email'));
+            $mail->setSender($store_name);
+            $mail->setSubject('Στοιχεία Αποστολής — Παραγγελία #' . $order_id);
+            $mail->setHtml($this->buildHtmlEmail($shipment['voucher_number'], $tracking_url, $name));
+            $mail->setText($this->buildPlainEmail($shipment['voucher_number'], $tracking_url));
+            $mail->send();
+        } catch (\Throwable $e) {
+            // Mail misconfigured — skip silently rather than break the order flow.
+        }
     }
 
     private function buildHtmlEmail(string $awb, string $tracking_url, string $name): string {

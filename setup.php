@@ -64,6 +64,7 @@ $events = [
     ['courier_center_boxnow_widget',  'Courier Center — BOX NOW widget στο checkout',         'catalog/view/checkout/checkout/after',              'extension/couriercenter/shipping/courier_center_boxnow.widget',             0],
     ['courier_center_boxnow_order',   'Courier Center — αποθήκευση BOX NOW locker',           'catalog/model/checkout/order/addOrder/after',       'extension/couriercenter/shipping/courier_center_boxnow.saveToOrder',        0],
     ['courier_center_auto_create',    'Courier Center — auto-create voucher σε αλλαγή status','catalog/model/checkout/order/addHistory/after',     'extension/couriercenter/shipping/courier_center_autocreate.autoCreate',     50],
+    ['courier_center_update_notice',  'Courier Center — ειδοποίηση διαθέσιμης ενημέρωσης',    'admin/view/common/column_left/after',               'extension/couriercenter/shipping/courier_center_update.notice',             0],
 ];
 
 foreach ($events as [$code, $desc, $trigger, $action, $sort]) {

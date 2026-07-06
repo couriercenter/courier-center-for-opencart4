@@ -128,15 +128,86 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
         }
     }
 
+    /**
+     * Passive "update available" banner (WooCommerce-style). Registered on the
+     * event admin/view/common/column_left/after so it runs on every admin page.
+     * The GitHub check is throttled to once every 12h and cached in settings, so
+     * it never hits the network on the hot path more than twice a day.
+     */
+    public function notice(string &$route, array &$args, mixed &$output): void {
+        if (self::GITHUB_REPO === '') {
+            return;
+        }
+        // Only bother users who can manage the extension.
+        if (!$this->user->hasPermission('access', 'extension/couriercenter/shipping/courier_center')) {
+            return;
+        }
+
+        $now       = time();
+        $last      = (int)$this->config->get('shipping_courier_center_update_check_last');
+        $available = (string)$this->config->get('shipping_courier_center_update_available') === '1';
+        $latest    = (string)$this->config->get('shipping_courier_center_update_latest');
+
+        // Refresh at most once every 12h (short timeout so it never hangs a page).
+        if ($now - $last >= 43200) {
+            $rel = $this->fetchLatestRelease(6);
+            if (!isset($rel['error'])) {
+                $latest    = ltrim((string)($rel['tag_name'] ?? ''), 'vV');
+                $available = ($latest !== '' && version_compare($latest, $this->currentVersion(), '>'));
+            }
+            $this->setCache('update_check_last', (string)$now);
+            $this->setCache('update_latest', $latest);
+            $this->setCache('update_available', $available ? '1' : '0');
+        }
+
+        if (!$available || $latest === '') {
+            return;
+        }
+
+        $url_js = json_encode($this->url->link('extension/couriercenter/shipping/courier_center', 'user_token=' . ($this->session->data['user_token'] ?? '')));
+        $ver_js = json_encode($latest);
+
+        $output .= <<<JS
+<script>
+(function() {
+  var VER = $ver_js, URL = $url_js;
+  try { if (localStorage.getItem('cc_upd_dismissed') === VER) return; } catch (e) {}
+  function add() {
+    var content = document.getElementById('content');
+    if (!content || document.getElementById('cc-update-banner')) return;
+    var d = document.createElement('div');
+    d.id = 'cc-update-banner';
+    d.style.cssText = 'margin:10px 15px;padding:12px 16px;background:#e7f5e9;border:1px solid #46b450;border-left:4px solid #46b450;border-radius:5px;font-size:14px;display:flex;align-items:center;gap:10px;';
+    d.innerHTML = '<span style="font-size:18px;">📦</span>'
+      + '<span style="flex:1;">Νέα έκδοση <strong>Courier Center v' + VER + '</strong> διαθέσιμη.</span>'
+      + '<a href="' + URL + '" class="btn btn-success btn-sm">Ενημέρωση τώρα →</a>'
+      + '<span id="cc-upd-x" style="cursor:pointer;font-size:16px;color:#666;padding:0 4px;" title="Απόκρυψη">✕</span>';
+    content.insertBefore(d, content.firstChild);
+    var x = document.getElementById('cc-upd-x');
+    if (x) x.onclick = function() { try { localStorage.setItem('cc_upd_dismissed', VER); } catch (e) {} d.remove(); };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+})();
+</script>
+JS;
+    }
+
+    /** Persist a single setting key directly (editSetting would wipe the group). */
+    private function setCache(string $key, string $value): void {
+        $k = 'shipping_courier_center_' . $key;
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "setting` WHERE `store_id` = '0' AND `code` = 'shipping_courier_center' AND `key` = '" . $this->db->escape($k) . "'");
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting` SET `store_id` = '0', `code` = 'shipping_courier_center', `key` = '" . $this->db->escape($k) . "', `value` = '" . $this->db->escape($value) . "', `serialized` = '0'");
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private function fetchLatestRelease(): array {
+    private function fetchLatestRelease(int $timeout = 20): array {
         $url = 'https://api.github.com/repos/' . self::GITHUB_REPO . '/releases/latest';
         $ch  = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_HTTPHEADER     => ['User-Agent: CourierCenter-OC-Updater', 'Accept: application/vnd.github+json'],
         ]);
         $body = curl_exec($ch);

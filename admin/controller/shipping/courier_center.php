@@ -186,6 +186,15 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'sort_order'  => 50,
         ]);
 
+        $this->model_setting_event->addEvent([
+            'code'        => 'courier_center_update_notice',
+            'description' => 'Courier Center — ειδοποίηση διαθέσιμης ενημέρωσης στο admin',
+            'trigger'     => 'admin/view/common/column_left/after',
+            'action'      => 'extension/couriercenter/shipping/courier_center_update.notice',
+            'status'      => 1,
+            'sort_order'  => 0,
+        ]);
+
         // Announce the install to the Courier Center dashboard.
         $this->ccSendPing(true);
     }
@@ -201,6 +210,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $this->model_setting_event->deleteEventByCode('courier_center_boxnow_widget');
         $this->model_setting_event->deleteEventByCode('courier_center_boxnow_order');
         $this->model_setting_event->deleteEventByCode('courier_center_auto_create');
+        $this->model_setting_event->deleteEventByCode('courier_center_update_notice');
     }
 
     public function autofill(): void {

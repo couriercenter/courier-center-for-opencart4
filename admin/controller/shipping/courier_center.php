@@ -195,6 +195,16 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'sort_order'  => 0,
         ]);
 
+        // Extensions > Shipping should list only the main method. The helper
+        // controllers (bug/docs/manifest/order/order_list/update) live under
+        // shipping/ for routing, not as shipping methods — drop their registered
+        // paths so the ocmod installer doesn't list them as separate methods.
+        $this->db->query(
+            "DELETE FROM `" . DB_PREFIX . "extension_path`
+             WHERE `path` LIKE 'couriercenter/admin/controller/shipping/%.php'
+               AND `path` <> 'couriercenter/admin/controller/shipping/courier_center.php'"
+        );
+
         // Announce the install to the Courier Center dashboard.
         $this->ccSendPing(true);
     }

@@ -87,6 +87,7 @@ $routes = [
     'extension/couriercenter/shipping/courier_center_manifest',
     'extension/couriercenter/shipping/courier_center_bug',
     'extension/couriercenter/shipping/courier_center_update',
+    'extension/couriercenter/shipping/courier_center_docs',
 ];
 $base = 'extension/couriercenter/shipping/courier_center';
 

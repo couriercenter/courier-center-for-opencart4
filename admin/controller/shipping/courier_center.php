@@ -106,6 +106,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $data['url_clear']   = $this->url->link('extension/couriercenter/shipping/courier_center.clearSettings', 'user_token=' . $this->session->data['user_token'], true);
         $data['url_manifest']= $this->url->link('extension/couriercenter/shipping/courier_center_manifest',  'user_token=' . $this->session->data['user_token']);
         $data['url_bug_report'] = $this->url->link('extension/couriercenter/shipping/courier_center_bug',     'user_token=' . $this->session->data['user_token']);
+        $data['url_docs']       = $this->url->link('extension/couriercenter/shipping/courier_center_docs',    'user_token=' . $this->session->data['user_token']);
         $data['url_update_check'] = $this->url->link('extension/couriercenter/shipping/courier_center_update.check', 'user_token=' . $this->session->data['user_token'], true);
         $data['url_update_apply'] = $this->url->link('extension/couriercenter/shipping/courier_center_update.apply', 'user_token=' . $this->session->data['user_token'], true);
 
@@ -128,6 +129,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'extension/couriercenter/shipping/courier_center_manifest',
             'extension/couriercenter/shipping/courier_center_bug',
             'extension/couriercenter/shipping/courier_center_update',
+            'extension/couriercenter/shipping/courier_center_docs',
         ];
         foreach ($routes as $route) {
             $this->model_user_user_group->addPermission($this->user->getGroupId(), 'access', $route);

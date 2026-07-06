@@ -169,17 +169,33 @@ JS;
             $shipments[$row['order_id']] = $row;
         }
 
-        if (empty($shipments)) return;
+        // Shipping method per visible order (+ whether the plugin manages it), so
+        // the merchant sees at a glance which orders Courier Center handles.
+        $handled = $this->config->get('shipping_courier_center_handled_shipping_methods');
+        $handled = is_array($handled) ? array_values(array_filter(array_map('strval', $handled))) : [];
+        $mq = $this->db->query("SELECT `order_id`, `shipping_method` FROM `" . DB_PREFIX . "order` WHERE `order_id` IN ($ids)");
+        $methods = [];
+        foreach ($mq->rows as $row) {
+            $m    = json_decode((string)$row['shipping_method'], true);
+            $full = is_array($m) ? (string)($m['code'] ?? '') : '';
+            $code = $full !== '' ? explode('.', $full)[0] : '';
+            $methods[$row['order_id']] = [
+                'name'    => is_array($m) ? (string)($m['name'] ?? '') : '',
+                'managed' => empty($handled) ? true : in_array($code, $handled, true),
+            ];
+        }
 
         // Build JS to inject columns
         $tracking_tpl = (string)$this->config->get('shipping_courier_center_tracking_url')
             ?: 'https://www.courier.gr/track/result?tracknr={{tracking}}';
-        $data_js  = json_encode($shipments);
-        $track_js = json_encode($tracking_tpl);
+        $data_js    = json_encode($shipments);
+        $methods_js = json_encode($methods);
+        $track_js   = json_encode($tracking_tpl);
         $script   = <<<JS
 <script>
 (function() {
   var ccData     = $data_js;
+  var ccMethods  = $methods_js;
   var ccTrackTpl = $track_js;
 
   function addCCColumns() {
@@ -189,6 +205,12 @@ JS;
     // Add header
     var thead = table.querySelector('thead tr');
     if (thead && !thead.querySelector('.cc-col-header')) {
+      var thM = document.createElement('td');
+      thM.className = 'cc-col-header text-center d-none d-lg-table-cell';
+      thM.style.cssText = 'white-space:nowrap; width:1px;';
+      thM.innerHTML = '<small style="color:#666;">Μέθοδος</small>';
+      thead.appendChild(thM);
+
       var th = document.createElement('td');
       th.className = 'cc-col-header text-center d-none d-lg-table-cell';
       th.style.cssText = 'white-space:nowrap; width:1px;';
@@ -246,6 +268,19 @@ JS;
         td2.innerHTML = '';
       }
 
+      var tdM = document.createElement('td');
+      tdM.className = 'cc-col-data text-center d-none d-lg-table-cell';
+      tdM.style.cssText = 'white-space:nowrap; font-size:11px;';
+      var mm = ccMethods[orderId];
+      if (mm) {
+        tdM.innerHTML = mm.managed
+          ? '<span style="color:#2c3338;">' + (mm.name || '—') + '</span>'
+          : '<span style="color:#c0392b;" title="Δεν διαχειρίζεται από το plugin — δεν δημιουργείται voucher αυτόματα/μαζικά">' + (mm.name || '—') + ' ⚠️</span>';
+      } else {
+        tdM.innerHTML = '<span style="color:#ccc;">—</span>';
+      }
+
+      tr.appendChild(tdM);
       tr.appendChild(td1);
       tr.appendChild(td2);
     });

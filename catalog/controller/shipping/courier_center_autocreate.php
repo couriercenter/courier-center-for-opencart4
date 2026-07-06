@@ -49,6 +49,13 @@ class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
             if (!$order) {
                 return;
             }
+
+            // Only auto-create for shipping methods the plugin manages (empty = all).
+            if (!$this->ccIsHandledOrder($order)) {
+                $this->ccNote($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: η μέθοδος αποστολής δεν διαχειρίζεται από το plugin.');
+                return;
+            }
+
             $products = $this->ccEnrichProducts($this->model_checkout_order->getProducts($order_id));
 
             // BOX NOW detection from the order's custom_field (set at checkout).
@@ -216,6 +223,25 @@ class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
                          'none', '', '$boxnow', '$lid', '$lcode', '$lname')"
             );
         }
+    }
+
+    /**
+     * Does the plugin manage this order's shipping method? Mirrors the admin-side
+     * check. If no methods are configured (empty option) it manages ALL orders.
+     */
+    private function ccIsHandledOrder(array $order): bool {
+        $handled = $this->config->get('shipping_courier_center_handled_shipping_methods');
+        $handled = is_array($handled) ? array_values(array_filter(array_map('strval', $handled))) : [];
+        if (empty($handled)) {
+            return true;
+        }
+        $m = $order['shipping_method'] ?? '';
+        if (is_string($m)) {
+            $m = json_decode($m, true);
+        }
+        $full = is_array($m) ? (string)($m['code'] ?? '') : '';
+        $code = $full !== '' ? explode('.', $full)[0] : '';
+        return in_array($code, $handled, true);
     }
 
     /**

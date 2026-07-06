@@ -82,6 +82,12 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             $data['boxnow_shipping_methods'] = ['courier_center'];
         }
 
+        // Which shipping methods the plugin manages (empty = all — see ccIsHandledOrder).
+        $data['handled_shipping_methods'] = $this->config->get($this->prefix . 'handled_shipping_methods');
+        if (!is_array($data['handled_shipping_methods'])) {
+            $data['handled_shipping_methods'] = [];
+        }
+
         // Shipping-method dropdown data
         $this->load->model('localisation/geo_zone');
         $data['geo_zones'] = $this->model_localisation_geo_zone->getGeoZones();
@@ -342,6 +348,19 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
         try {
             $order_id = (int)($this->request->post['order_id'] ?? 0);
+
+            // Shipping method not managed by the plugin → ask for confirmation
+            // (override) instead of silently creating a shipment for another courier.
+            if (empty($this->request->post['override']) && !$this->ccIsHandledOrder($order_id)) {
+                $ship = $this->ccOrderShipping($order_id);
+                $this->response->setOutput(json_encode([
+                    'success'        => false,
+                    'needs_override' => true,
+                    'error'          => 'Η παραγγελία χρησιμοποιεί μέθοδο αποστολής «' . ($ship['name'] ?: '—') . '» που δεν διαχειρίζεται το plugin. Δημιουργία αποστολής στην Courier Center ούτως ή άλλως;',
+                ]));
+                return;
+            }
+
             $result = $this->ccCreateVoucherForOrder($order_id, [
                 'service_type'  => $this->request->post['service_type']  ?? 'next_day',
                 'parcel_count'  => $this->request->post['parcel_count']  ?? 1,
@@ -509,6 +528,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $msg = "Σύνολο: " . count($order_ids) . " | ✅ Δημιουργήθηκαν: {$r['success']}";
         if ($r['skipped'])      $msg .= " | ⏭️ Έχουν ήδη voucher: {$r['skipped']}";
         if ($r['skipped_type']) $msg .= " | 📦 BOX NOW (χρησ. «Δημιουργία BOX NOW»): {$r['skipped_type']}";
+        if (!empty($r['skipped_unmanaged'])) $msg .= " | 🚫 Μη διαχειρίσιμη μέθοδος: {$r['skipped_unmanaged']}";
         if ($r['failed'])       $msg .= " | ❌ Απέτυχαν: {$r['failed']}";
         if ($r['errors'])       $msg .= "\n\n" . implode("\n", array_slice($r['errors'], 0, 15));
 
@@ -539,6 +559,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $msg = "📦 BOX NOW — Σύνολο: " . count($order_ids) . " | ✅ Δημιουργήθηκαν: {$r['success']}";
         if ($r['skipped'])      $msg .= " | ⏭️ Έχουν ήδη voucher: {$r['skipped']}";
         if ($r['skipped_type']) $msg .= " | ➡️ Όχι BOX NOW (χρησ. «Δημιουργία Vouchers»): {$r['skipped_type']}";
+        if (!empty($r['skipped_unmanaged'])) $msg .= " | 🚫 Μη διαχειρίσιμη μέθοδος: {$r['skipped_unmanaged']}";
         if ($r['failed'])       $msg .= " | ❌ Απέτυχαν: {$r['failed']}";
         if ($r['errors'])       $msg .= "\n\n" . implode("\n", array_slice($r['errors'], 0, 15));
 
@@ -555,12 +576,18 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
     private function ccRunBulkCreate(array $order_ids, bool $boxnow_only): array {
         $this->load->model('extension/couriercenter/shipping/courier_center');
 
-        $success = 0; $failed = 0; $skipped = 0; $skipped_type = 0; $errors = [];
+        $success = 0; $failed = 0; $skipped = 0; $skipped_type = 0; $skipped_unmanaged = 0; $errors = [];
 
         foreach ($order_ids as $order_id) {
             $existing = $this->model_extension_couriercenter_shipping_courier_center->getShipment($order_id);
             if (!empty($existing['voucher_number']) && empty($existing['is_voided'])) {
                 $skipped++;
+                continue;
+            }
+
+            // Only orders whose shipping method the plugin manages.
+            if (!$this->ccIsHandledOrder($order_id)) {
+                $skipped_unmanaged++;
                 continue;
             }
 
@@ -590,7 +617,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             usleep(250000);
         }
 
-        return ['success' => $success, 'failed' => $failed, 'skipped' => $skipped, 'skipped_type' => $skipped_type, 'errors' => $errors];
+        return ['success' => $success, 'failed' => $failed, 'skipped' => $skipped, 'skipped_type' => $skipped_type, 'skipped_unmanaged' => $skipped_unmanaged, 'errors' => $errors];
     }
 
     /**
@@ -970,6 +997,35 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
     private function ccParseOrderIds(string $raw): array {
         $ids = array_filter(array_map('intval', explode(',', $raw)), fn($id) => $id > 0);
         return array_values(array_unique($ids));
+    }
+
+    /**
+     * The shipping method [code, name] of an order. OpenCart stores it as JSON
+     * in oc_order.shipping_method with a "code" like "courier_center.courier_center";
+     * the plugin-facing code is the part before the dot.
+     */
+    private function ccOrderShipping(int $order_id): array {
+        $q = $this->db->query("SELECT `shipping_method` FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1");
+        if (!$q->num_rows) return ['code' => '', 'name' => ''];
+        $m = json_decode((string)$q->row['shipping_method'], true);
+        if (!is_array($m)) return ['code' => '', 'name' => ''];
+        $full = (string)($m['code'] ?? '');
+        return [
+            'code' => $full !== '' ? explode('.', $full)[0] : '',
+            'name' => (string)($m['name'] ?? ''),
+        ];
+    }
+
+    /**
+     * Does the plugin manage this order's shipping method? (mirrors WooCommerce's
+     * CC_Shipment_Builder::is_handled_order). If no methods are configured the
+     * plugin manages ALL orders, so existing installs keep working.
+     */
+    private function ccIsHandledOrder(int $order_id): bool {
+        $handled = $this->config->get($this->prefix . 'handled_shipping_methods');
+        $handled = is_array($handled) ? array_values(array_filter(array_map('strval', $handled))) : [];
+        if (empty($handled)) return true;
+        return in_array($this->ccOrderShipping($order_id)['code'], $handled, true);
     }
 
     /**

@@ -192,6 +192,20 @@
             </div>
           </div>
 
+          <hr><h4 style="padding-left:15px">🚚 Μέθοδοι αποστολής που διαχειρίζεται το plugin</h4>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Διαχειρίσιμες μέθοδοι</label>
+            <div class="col-sm-10">
+              <select name="shipping_courier_center_handled_shipping_methods[]" multiple class="form-control" style="max-width:320px; min-height:120px;">
+                {% for m in shipping_methods_list %}
+                <option value="{{ m.code }}"{% if m.code in handled_shipping_methods %} selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+              </select>
+              <p class="help-block">Voucher Courier Center (αυτόματα / μαζικά / χειροκίνητα) δημιουργείται <strong>μόνο</strong> για παραγγελίες με αυτές τις μεθόδους — οι υπόλοιπες (π.χ. άλλος courier) αγνοούνται. Κράτα <strong>Ctrl</strong> για πολλαπλή επιλογή. <strong>Αν δεν επιλέξεις καμία, το plugin διαχειρίζεται ΟΛΕΣ τις παραγγελίες.</strong></p>
+            </div>
+          </div>
+
           <hr><h4 style="padding-left:15px">Εκτύπωση Voucher</h4>
 
           <div class="form-group">

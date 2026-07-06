@@ -306,7 +306,7 @@
   };
 
   // ── Voucher creation ──────────────────────────────────────────────
-  window.ccCreateVoucher = function(service, boxnow, returnOpt, parcels, lockerId, lockerCode, lockerName, deliveryMode) {
+  window.ccCreateVoucher = function(service, boxnow, returnOpt, parcels, lockerId, lockerCode, lockerName, deliveryMode, override) {
     ccPost('{{ ajax_create }}', {
       order_id: ccOrderId,
       service_type: service || 'next_day',
@@ -316,10 +316,18 @@
       locker_id: lockerId || '',
       locker_code: lockerCode || '',
       locker_name: lockerName || '',
-      delivery_mode: deliveryMode || ''
+      delivery_mode: deliveryMode || '',
+      override: override ? 1 : 0
     }, function(r) {
-      if (r.success) { ccReload(); }
-      else { ccMsg('danger', r.error || 'Σφάλμα δημιουργίας voucher'); }
+      if (r.success) { ccReload(); return; }
+      // Μέθοδος αποστολής που δεν διαχειρίζεται το plugin → ζήτα επιβεβαίωση & ξαναστείλε με override.
+      if (r.needs_override) {
+        if (confirm(r.error || 'Η μέθοδος αποστολής δεν διαχειρίζεται από το plugin. Δημιουργία ούτως ή άλλως;')) {
+          ccCreateVoucher(service, boxnow, returnOpt, parcels, lockerId, lockerCode, lockerName, deliveryMode, true);
+        }
+        return;
+      }
+      ccMsg('danger', r.error || 'Σφάλμα δημιουργίας voucher');
     });
   };
 

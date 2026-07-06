@@ -17,6 +17,9 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
     // Empty string = updater disabled (no checks happen).
     const GITHUB_REPO = 'couriercenter/courier-center-for-opencart4';
 
+    // How often the passive banner re-checks GitHub (seconds). 12h, like WordPress.
+    const UPDATE_CHECK_INTERVAL = 43200;
+
     private function currentVersion(): string {
         $f = DIR_EXTENSION . 'couriercenter/install.json';
         if (is_file($f)) {
@@ -118,6 +121,9 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
 
             $this->rrmdir($tmp);
 
+            // Forget the "update available" cache so the banner clears right away.
+            $this->clearUpdateCache();
+
             $this->response->setOutput(json_encode([
                 'success' => true,
                 'version' => $latest,
@@ -148,8 +154,8 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
         $available = (string)$this->config->get('shipping_courier_center_update_available') === '1';
         $latest    = (string)$this->config->get('shipping_courier_center_update_latest');
 
-        // Refresh at most once every 12h (short timeout so it never hangs a page).
-        if ($now - $last >= 43200) {
+        // Refresh at most once per interval (short timeout so it never hangs a page).
+        if ($now - $last >= self::UPDATE_CHECK_INTERVAL) {
             $rel = $this->fetchLatestRelease(6);
             if (!isset($rel['error'])) {
                 $latest    = ltrim((string)($rel['tag_name'] ?? ''), 'vV');
@@ -197,6 +203,13 @@ JS;
         $k = 'shipping_courier_center_' . $key;
         $this->db->query("DELETE FROM `" . DB_PREFIX . "setting` WHERE `store_id` = '0' AND `code` = 'shipping_courier_center' AND `key` = '" . $this->db->escape($k) . "'");
         $this->db->query("INSERT INTO `" . DB_PREFIX . "setting` SET `store_id` = '0', `code` = 'shipping_courier_center', `key` = '" . $this->db->escape($k) . "', `value` = '" . $this->db->escape($value) . "', `serialized` = '0'");
+    }
+
+    /** Forget the cached update-check result so the banner re-checks on next load. */
+    private function clearUpdateCache(): void {
+        foreach (['update_check_last', 'update_latest', 'update_available'] as $key) {
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "setting` WHERE `store_id` = '0' AND `code` = 'shipping_courier_center' AND `key` = 'shipping_courier_center_" . $this->db->escape($key) . "'");
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

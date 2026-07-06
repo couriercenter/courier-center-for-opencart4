@@ -210,7 +210,8 @@
       return ALLOWED_SHIPPING.indexOf(prefix) !== -1;
     }
     function ccShowLockedNotice() {
-      var wrap = $id('cc-boxnow-wrap') || $id('cc-bn-widget');
+      // Prefer the (relocated) visible widget so the notice shows next to the toggle.
+      var wrap = $id('cc-bn-widget') || $id('cc-boxnow-wrap');
       var n = $id('cc-bn-locked-notice');
       if (!n && wrap) {
         n = document.createElement('div');

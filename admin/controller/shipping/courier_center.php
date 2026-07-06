@@ -189,7 +189,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $this->model_setting_event->addEvent([
             'code'        => 'courier_center_update_notice',
             'description' => 'Courier Center — ειδοποίηση διαθέσιμης ενημέρωσης στο admin',
-            'trigger'     => 'admin/view/common/column_left/after',
+            'trigger'     => 'admin/view/common/header/after',
             'action'      => 'extension/couriercenter/shipping/courier_center_update.notice',
             'status'      => 1,
             'sort_order'  => 0,

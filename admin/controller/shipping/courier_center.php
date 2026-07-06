@@ -39,7 +39,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'status', 'user_alias', 'credential_value', 'api_key', 'billing_account',
             'shipper_name', 'shipper_address', 'shipper_postcode', 'shipper_city', 'shipper_phone',
             'tracking_url', 'email_tracking_enabled',
-            'boxnow_enabled', 'print_template', 'print_template_boxnow', 'auto_complete_status_id',
+            'boxnow_enabled', 'boxnow_default_selected', 'print_template', 'print_template_boxnow', 'auto_complete_status_id',
             'auto_create_enabled', 'auto_create_status_id',
             'cost', 'cod_fee', 'geo_zone_id', 'tax_class_id', 'sort_order',
         ];

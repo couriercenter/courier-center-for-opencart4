@@ -5,7 +5,7 @@
     <input type="hidden" id="cc_boxnow_locker_name" value="{{ sel_locker_name }}">
     <input type="hidden" id="cc_boxnow_delivery_mode" value="{{ sel_mode }}">
 
-    <label class="cc-bn-toggle">
+    <label class="cc-bn-toggle" id="cc-bn-toggle-label">
       <input type="checkbox" id="cc-bn-checkbox"{% if sel_selected %} checked{% endif %}>
       <span class="cc-bn-logo">📦 BOX NOW</span>
       <span class="cc-bn-toggle-text">Παράδοση σε <strong>BOX NOW Locker</strong></span>
@@ -59,6 +59,8 @@
   .cc-bn-box.cc-has-error { border-color:#c53030; }
   .cc-bn-toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:15px; margin:0; }
   .cc-bn-toggle input { width:18px; height:18px; cursor:pointer; }
+  .cc-bn-toggle.cc-bn-locked input { cursor:not-allowed; }
+  .cc-bn-toggle.cc-bn-locked .cc-bn-toggle-text::after { content:' 🔒'; font-size:12px; }
   .cc-bn-logo { font-weight:700; color:#1a1a1a; background:#f3f4f6; padding:2px 8px; border-radius:4px; white-space:nowrap; }
   .cc-bn-toggle-text { color:#2c3338; }
   .cc-bn-options { display:none; margin-top:12px; padding-top:12px; border-top:1px solid #eef1f4; }
@@ -92,6 +94,10 @@
   var PARTNER_ID = {{ partner_id }};
   var SAVE_URL   = '{{ save_url }}';
   var ALLOWED_SHIPPING = {{ allowed_shipping_json }};
+  var DEFAULT_SELECTED = {{ default_selected ? 'true' : 'false' }};
+  var ccToggleLocked = false;   // true όταν το BOX NOW είναι κλειδωμένο (default selection)
+  var ccProgrammatic = false;   // guard: τα προγραμματιστικά change δεν μετράνε ως ενέργεια χρήστη
+  var ccLockedTimer  = null;
   var sdkLoaded  = false;
 
   // BOX NOW map SDK config — must exist before the SDK script loads.
@@ -203,15 +209,46 @@
       var prefix = code.split('.')[0]; // "courier_center.courier_center" → "courier_center"
       return ALLOWED_SHIPPING.indexOf(prefix) !== -1;
     }
+    function ccShowLockedNotice() {
+      var wrap = $id('cc-boxnow-wrap') || $id('cc-bn-widget');
+      var n = $id('cc-bn-locked-notice');
+      if (!n && wrap) {
+        n = document.createElement('div');
+        n.id = 'cc-bn-locked-notice';
+        n.style.cssText = 'margin-top:8px;padding:8px 10px;background:#fff3cd;color:#8a6d3b;border-radius:4px;font-size:13px;';
+        n.textContent = 'Για να αφαιρέσετε την υπηρεσία BOX NOW, επιλέξτε άλλον τρόπο μεταφοράς.';
+        wrap.appendChild(n);
+      }
+      if (n) { n.style.display = ''; clearTimeout(ccLockedTimer); ccLockedTimer = setTimeout(function(){ n.style.display = 'none'; }, 5000); }
+    }
     function ccUpdateVisibility() {
       var w = $id('cc-bn-widget');
       if (!w) return;
+      var box = $id('cc-bn-checkbox');
+      var lbl = $id('cc-bn-toggle-label');
       if (ccShippingIsCC()) {
         w.style.display = '';
+        // Default selection (v1.3.9): προ-τσεκάρισμα + κλείδωμα του toggle
+        if (DEFAULT_SELECTED && box) {
+          ccToggleLocked = true;
+          if (lbl) lbl.classList.add('cc-bn-locked');
+          if (!box.checked) {
+            ccProgrammatic = true;
+            box.checked = true; box.dispatchEvent(new Event('change'));
+            ccProgrammatic = false;
+          }
+        }
       } else {
+        // Ξεκλείδωμα ΠΡΙΝ το uncheck, ώστε το προγραμματιστικό change να μη μπλοκαριστεί
+        ccToggleLocked = false;
+        if (lbl) lbl.classList.remove('cc-bn-locked');
+        var nn = $id('cc-bn-locked-notice'); if (nn) nn.style.display = 'none';
         w.style.display = 'none';
-        var box = $id('cc-bn-checkbox');
-        if (box && box.checked) { box.checked = false; box.dispatchEvent(new Event('change')); }
+        if (box && box.checked) {
+          ccProgrammatic = true;
+          box.checked = false; box.dispatchEvent(new Event('change'));
+          ccProgrammatic = false;
+        }
       }
     }
     // Initial state + re-check whenever the confirm block reloads (which happens
@@ -230,6 +267,12 @@
     // Toggle
     var cb = $id('cc-bn-checkbox');
     if (cb) cb.addEventListener('change', function() {
+      // Κλειδωμένο BOX NOW (default selection): μπλοκάρει το χειροκίνητο ξε-τσεκάρισμα
+      if (!this.checked && ccToggleLocked && !ccProgrammatic) {
+        this.checked = true;
+        ccShowLockedNotice();
+        return;
+      }
       if (this.checked) { show('cc-bn-options'); }
       else { hide('cc-bn-options'); resetOptions(); }
       clearError(); syncSession();

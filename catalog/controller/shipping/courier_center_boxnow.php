@@ -43,6 +43,7 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
             'sel_locker_id'        => (string)($sel['locker_id'] ?? ''),
             'sel_locker_name'      => (string)($sel['locker_name'] ?? ''),
             'allowed_shipping_json'=> json_encode(array_values($allowed)),
+            'default_selected'     => ((string)$this->config->get('shipping_courier_center_boxnow_default_selected') === '1'),
         ];
 
         $html = $this->load->view('extension/couriercenter/shipping/boxnow_widget', $widget_data);

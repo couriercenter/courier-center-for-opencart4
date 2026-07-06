@@ -907,26 +907,63 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
     /**
      * Enrich order products with real weight + dimensions from the product table
-     * (oc_order_product has none). Values are sent as-is (kg/cm), matching the
-     * WooCommerce plugin which uses the store's product weight/dimensions directly.
+     * (oc_order_product has none). Weight is converted to kg and dimensions to cm
+     * from the product's weight/length class, mirroring the WooCommerce plugin's
+     * wc_get_weight()/wc_get_dimension() — a store measuring in grams or inches
+     * would otherwise send raw values (e.g. 146 g -> 146 kg) and exceed limits.
      */
     private function ccEnrichProducts(array $products): array {
         foreach ($products as &$p) {
             $pid = (int)($p['product_id'] ?? 0);
             if ($pid <= 0) continue;
             $q = $this->db->query(
-                "SELECT `weight`, `length`, `width`, `height` FROM `" . DB_PREFIX . "product`
+                "SELECT `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id` FROM `" . DB_PREFIX . "product`
                  WHERE `product_id` = '" . $pid . "' LIMIT 1"
             );
             if ($q->num_rows) {
-                $p['weight'] = (float)$q->row['weight'];
-                $p['length'] = (float)$q->row['length'];
-                $p['width']  = (float)$q->row['width'];
-                $p['height'] = (float)$q->row['height'];
+                $wcid = (int)$q->row['weight_class_id'];
+                $lcid = (int)$q->row['length_class_id'];
+                $p['weight'] = $this->ccConvertClass((float)$q->row['weight'], $wcid, 'weight_class', 'kg');
+                $p['length'] = $this->ccConvertClass((float)$q->row['length'], $lcid, 'length_class', 'cm');
+                $p['width']  = $this->ccConvertClass((float)$q->row['width'],  $lcid, 'length_class', 'cm');
+                $p['height'] = $this->ccConvertClass((float)$q->row['height'], $lcid, 'length_class', 'cm');
             }
         }
         unset($p);
         return $products;
+    }
+
+    /**
+     * Convert a value stored in an OpenCart weight/length class to the unit the
+     * Courier Center API expects (kg / cm). Looks up the target class by unit and
+     * scales by the class ratios (value_target / value_from). Falls back to the
+     * raw value if the target or source class cannot be resolved.
+     */
+    private function ccConvertClass(float $value, int $from_class_id, string $table, string $unit): float {
+        if ($value <= 0 || $from_class_id <= 0) {
+            return $value;
+        }
+        static $target_cache = [];
+        $key = $table . '|' . $unit;
+        if (!array_key_exists($key, $target_cache)) {
+            $r = $this->db->query(
+                "SELECT c.`" . $table . "_id` AS id, c.`value` AS val
+                   FROM `" . DB_PREFIX . $table . "` c
+                   JOIN `" . DB_PREFIX . $table . "_description` d ON c.`" . $table . "_id` = d.`" . $table . "_id`
+                  WHERE LOWER(TRIM(d.`unit`)) = '" . $this->db->escape($unit) . "' LIMIT 1"
+            );
+            $target_cache[$key] = $r->num_rows ? ['id' => (int)$r->row['id'], 'val' => (float)$r->row['val']] : null;
+        }
+        $target = $target_cache[$key];
+        if (!$target || $from_class_id === $target['id']) {
+            return $value;
+        }
+        $f = $this->db->query("SELECT `value` FROM `" . DB_PREFIX . $table . "` WHERE `" . $table . "_id` = '" . (int)$from_class_id . "' LIMIT 1");
+        $from_val = $f->num_rows ? (float)$f->row['value'] : 0.0;
+        if ($from_val <= 0) {
+            return $value;
+        }
+        return $value * ($target['val'] / $from_val);
     }
 
     /** Parse a "1,2,3" order-id list into a unique array of positive ints. */

@@ -40,7 +40,7 @@ class CCShipmentBuilder {
      *
      * @return true|string Returns true on success, error message string on failure
      */
-    public function validate_settings(): true|string {
+    public function validate_settings() {
         $required = [
             'user_alias'      => 'User Alias',
             'credential_value'=> 'Credential Value',
@@ -65,7 +65,7 @@ class CCShipmentBuilder {
      *
      * @return true|string Returns true on success, error message string on failure
      */
-    public function validate_order(): true|string {
+    public function validate_order() {
         $first    = $this->order->get_billing_first_name();
         $last     = $this->order->get_billing_last_name();
         $address  = $this->order->get_billing_address_1();

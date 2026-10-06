@@ -313,19 +313,22 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
         $api->void_shipment($awb);
 
-        $this->load->model('setting/setting');
-        $this->model_setting_setting->editSetting('shipping_courier_center', [
-            $this->prefix . 'user_alias'       => $user_alias,
-            $this->prefix . 'credential_value' => $credential_value,
-            $this->prefix . 'api_key'          => $api_key,
-            $this->prefix . 'billing_account'  => $billing_account,
-            $this->prefix . 'shipper_name'     => $name,
-            $this->prefix . 'shipper_address'  => $address,
-            $this->prefix . 'shipper_postcode' => $postal,
-            $this->prefix . 'shipper_city'     => $city,
-            $this->prefix . 'shipper_phone'    => $phone,
-            $this->prefix . 'status'           => $this->config->get($this->prefix . 'status') ?: '0',
-        ]);
+        // Only these keys: editSetting() would wipe every other setting of the group
+        // (cost, BOX NOW, auto-create, ...) until the merchant pressed Save again.
+        $values = [
+            'user_alias'       => $user_alias,
+            'credential_value' => $credential_value,
+            'api_key'          => $api_key,
+            'billing_account'  => $billing_account,
+            'shipper_name'     => $name,
+            'shipper_address'  => $address,
+            'shipper_postcode' => $postal,
+            'shipper_city'     => $city,
+            'shipper_phone'    => $phone,
+        ];
+        foreach ($values as $key => $value) {
+            $this->ccSetValue($key, (string)$value);
+        }
 
         $this->response->setOutput(json_encode([
             'success'         => true,
@@ -1102,6 +1105,13 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
      * If a shipment reached a "delivered" status and auto-complete is configured,
      * move the order to the chosen status. Returns true if it changed the order.
      */
+    /** Persist a single setting key, leaving the rest of the group untouched. */
+    private function ccSetValue(string $key, string $value): void {
+        $k = $this->db->escape($this->prefix . $key);
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "setting` WHERE `store_id` = '0' AND `code` = 'shipping_courier_center' AND `key` = '" . $k . "'");
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting` SET `store_id` = '0', `code` = 'shipping_courier_center', `key` = '" . $k . "', `value` = '" . $this->db->escape($value) . "', `serialized` = '0'");
+    }
+
     /** " (Action: N)" suffix for the history note, like the WooCommerce plugin. */
     private function ccStatusAction(array $status): string {
         return $status['action'] !== '' ? ' (Action: ' . $status['action'] . ')' : '';

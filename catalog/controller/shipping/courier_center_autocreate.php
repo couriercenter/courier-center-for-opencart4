@@ -36,12 +36,8 @@ class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
                 "SELECT `voucher_number`, `is_voided` FROM `" . DB_PREFIX . "cc_shipments`
                  WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1"
             );
-            $had_voided = false;
-            if ($ex->num_rows) {
-                if ($ex->row['voucher_number'] !== '' && (int)$ex->row['is_voided'] === 0) {
-                    return; // already has an active voucher
-                }
-                $had_voided = ((int)$ex->row['is_voided'] === 1);
+            if ($ex->num_rows && $ex->row['voucher_number'] !== '' && (int)$ex->row['is_voided'] === 0) {
+                return; // already has an active voucher
             }
 
             $this->load->model('checkout/order');
@@ -142,7 +138,6 @@ class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
                 'locker_id'       => $locker_id,
                 'locker_code'     => $locker_code,
                 'locker_name'     => $locker_name,
-                'reset_voided'    => $had_voided,
             ]);
 
             $this->ccNote($order_id, sprintf(
@@ -197,12 +192,16 @@ class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
         $exists = $this->db->query("SELECT `order_id` FROM `" . DB_PREFIX . "cc_shipments` WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1");
 
         if ($exists->num_rows) {
-            $reset = !empty($d['reset_voided'])
-                ? "`is_voided` = 0, `is_final` = 0, `status_code` = '', `status_desc` = '',"
-                : '';
+            // A new voucher is a new shipment: drop the void/status/date of the old one.
             $this->db->query(
                 "UPDATE `" . DB_PREFIX . "cc_shipments` SET
-                    $reset
+                    `is_voided`         = 0,
+                    `is_final`          = 0,
+                    `status_code`       = '',
+                    `status_desc`       = '',
+                    `last_checked_at`   = NULL,
+                    `status_updated_at` = NULL,
+                    `created_at`        = NOW(),
                     `voucher_number`  = '$voucher',
                     `tracking_number` = '$tracking',
                     `service_type`    = '$service',

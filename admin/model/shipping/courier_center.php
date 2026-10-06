@@ -48,9 +48,17 @@ class CourierCenter extends \Opencart\System\Engine\Model {
         $locker_name    = $this->db->escape($data['locker_name']  ?? '');
 
         if ($existing) {
+            // A new voucher is a new shipment: drop the void/status/date of the old one.
             $this->db->query(
                 "UPDATE `" . DB_PREFIX . "cc_shipments`
-                 SET `voucher_number`  = '$voucher',
+                 SET `is_voided`         = 0,
+                     `is_final`          = 0,
+                     `status_code`       = '',
+                     `status_desc`       = '',
+                     `last_checked_at`   = NULL,
+                     `status_updated_at` = NULL,
+                     `created_at`        = NOW(),
+                     `voucher_number`  = '$voucher',
                      `tracking_number` = '$tracking',
                      `service_type`    = '$service',
                      `return_option`   = '$return_option',

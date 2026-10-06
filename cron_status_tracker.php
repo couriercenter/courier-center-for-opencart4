@@ -105,7 +105,8 @@ foreach ($rows->rows as $shipment) {
          SET `status_code`      = '" . $db->escape($code) . "',
              `status_desc`      = '" . $db->escape($desc) . "',
              `is_final`         = $final,
-             `last_checked_at`  = " . time() . "
+             `last_checked_at`  = " . time() . ",
+             `status_updated_at` = NOW()
          WHERE `order_id` = " . (int)$shipment['order_id']
     );
 

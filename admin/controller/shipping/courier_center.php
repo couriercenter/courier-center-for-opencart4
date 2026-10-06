@@ -371,6 +371,11 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
         $this->response->addHeader('Content-Type: application/json');
 
+        if (!$this->user->hasPermission('modify', 'extension/couriercenter/shipping/courier_center')) {
+            $this->response->setOutput(json_encode(['success' => false, 'error' => 'No permission']));
+            return;
+        }
+
         try {
             $order_id = (int)($this->request->post['order_id'] ?? 0);
 
@@ -710,6 +715,11 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
     public function voidShipment(): void {
         $this->response->addHeader('Content-Type: application/json');
 
+        if (!$this->user->hasPermission('modify', 'extension/couriercenter/shipping/courier_center')) {
+            $this->response->setOutput(json_encode(['success' => false, 'error' => 'No permission']));
+            return;
+        }
+
         $order_id = (int)($this->request->post['order_id'] ?? 0);
         $this->load->model('extension/couriercenter/shipping/courier_center');
         $shipment = $this->model_extension_couriercenter_shipping_courier_center->getShipment($order_id);
@@ -732,6 +742,11 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
     public function removeBoxNow(): void {
         $this->response->addHeader('Content-Type: application/json');
+
+        if (!$this->user->hasPermission('modify', 'extension/couriercenter/shipping/courier_center')) {
+            $this->response->setOutput(json_encode(['success' => false, 'error' => 'No permission']));
+            return;
+        }
 
         $order_id = (int)($this->request->post['order_id'] ?? 0);
         $this->load->model('extension/couriercenter/shipping/courier_center');
@@ -758,6 +773,11 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
 
     public function updateStatus(): void {
         $this->response->addHeader('Content-Type: application/json');
+
+        if (!$this->user->hasPermission('modify', 'extension/couriercenter/shipping/courier_center')) {
+            $this->response->setOutput(json_encode(['success' => false, 'error' => 'No permission']));
+            return;
+        }
 
         $order_id = (int)($this->request->post['order_id'] ?? 0);
         $this->load->model('extension/couriercenter/shipping/courier_center');

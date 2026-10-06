@@ -1,17 +1,20 @@
 <?php
 /**
- * Courier Center API Wrapper — OpenCart port
+ * Courier Center API Wrapper - OpenCart port (shared by the OpenCart 3 and 4 extensions).
  * Accurate port of class-cc-api.php (WooCommerce plugin)
- * Replaces wp_remote_* with curl, WP_Error with array returns
+ * Replaces wp_remote_* with curl, WP_Error with array returns.
+ * PHP 7.2+ syntax (no typed properties / union types) so it runs on every supported host.
  */
 
 namespace Opencart\Extension\Couriercenter\Library;
 
 class CCApi {
 
-    private string $api_url = 'https://funship.cc.qualco.eu/ccservice/api';
+    /** @var string */
+    private $api_url = 'https://funship.cc.qualco.eu/ccservice/api';
 
-    private array $credentials;
+    /** @var array */
+    private $credentials;
 
     public function __construct(string $user_alias, string $credential_value, string $api_key, string $billing_account) {
         $this->credentials = [
@@ -81,9 +84,9 @@ class CCApi {
 
     /**
      * Get voucher PDF
-     * Returns raw PDF bytes string on success, or ['success'=>false, 'error'=>'...'] on failure
+     * @return string|array Raw PDF bytes on success, or ['success'=>false, 'error'=>'...'] on failure
      */
-    public function get_voucher_pdf(string $awb_numbers, string $template = 'cleanpdf'): string|array {
+    public function get_voucher_pdf(string $awb_numbers, string $template = 'cleanpdf') {
         $payload = [
             'context'        => $this->get_context(),
             'Template'       => $template,
@@ -98,10 +101,10 @@ class CCApi {
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_TIMEOUT        => 60,
         ]);
-        $body      = curl_exec($ch);
+        $body      = (string)curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_err  = curl_error($ch);
-        curl_close($ch);
+        self::close_curl($ch);
 
         if ($curl_err) {
             return ['success' => false, 'error' => $curl_err];
@@ -135,9 +138,9 @@ class CCApi {
 
     /**
      * Void (cancel) a shipment
-     * Returns true on success, or ['success'=>false, 'error'=>'...'] on failure
+     * @return bool|array true on success, or ['success'=>false, 'error'=>'...'] on failure
      */
-    public function void_shipment(string $awb): bool|array {
+    public function void_shipment(string $awb) {
         if (empty($awb)) {
             return ['success' => false, 'error' => 'Δεν δόθηκε AWB για ακύρωση'];
         }
@@ -176,9 +179,9 @@ class CCApi {
 
     /**
      * Get manifest PDF for a date (YYYY-MM-DD)
-     * Returns raw PDF bytes on success, or ['success'=>false, 'error'=>'...'] on failure
+     * @return string|array Raw PDF bytes on success, or ['success'=>false, 'error'=>'...'] on failure
      */
-    public function get_manifest(string $date): string|array {
+    public function get_manifest(string $date) {
         $d = \DateTime::createFromFormat('Y-m-d', $date);
         if (!$d || $d->format('Y-m-d') !== $date) {
             return ['success' => false, 'error' => 'Μη έγκυρη ημερομηνία (YYYY-MM-DD)'];
@@ -192,10 +195,10 @@ class CCApi {
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_TIMEOUT        => 60,
         ]);
-        $body      = curl_exec($ch);
+        $body      = (string)curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_err  = curl_error($ch);
-        curl_close($ch);
+        self::close_curl($ch);
 
         if ($curl_err) return ['success' => false, 'error' => $curl_err];
         if ($http_code !== 200) return ['success' => false, 'error' => "HTTP $http_code"];
@@ -235,10 +238,10 @@ class CCApi {
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_TIMEOUT        => 30,
         ]);
-        $response  = curl_exec($ch);
+        $response  = (string)curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_err  = curl_error($ch);
-        curl_close($ch);
+        self::close_curl($ch);
 
         if ($curl_err) throw new \Exception($curl_err);
         if ($http_code !== 200) throw new \Exception("HTTP $http_code: $response");
@@ -247,6 +250,11 @@ class CCApi {
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \Exception('Invalid JSON: ' . json_last_error_msg());
         }
-        return $data;
+        return is_array($data) ? $data : [];
+    }
+
+    /** curl_close() is a no-op since PHP 8.0 and deprecated in PHP 8.5. */
+    private static function close_curl($ch): void {
+        if (PHP_VERSION_ID < 80000) { curl_close($ch); }
     }
 }

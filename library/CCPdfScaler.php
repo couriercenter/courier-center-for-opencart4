@@ -11,26 +11,34 @@ class CCPdfScaler {
 
     const SCALE_FACTOR = 0.95;
 
-    private static bool $libraries_loaded = false;
+    /** @var bool */
+    private static $libraries_loaded = false;
 
     private static function load_libraries(): void {
         if (self::$libraries_loaded) return;
 
         $base = __DIR__ . '/lib';
 
-        $fpdf = $base . '/fpdf/fpdf.php';
-        if (!file_exists($fpdf)) throw new \Exception('FPDF library not found at: ' . $fpdf);
-        require_once $fpdf;
+        // Another extension may already have loaded its own FPDF / FPDI:
+        // declaring the classes again would be a fatal error, so reuse theirs.
+        if (!class_exists('FPDF', false)) {
+            $fpdf = $base . '/fpdf/fpdf.php';
+            if (!file_exists($fpdf)) throw new \Exception('FPDF library not found at: ' . $fpdf);
+            require_once $fpdf;
+        }
 
-        $fpdi = $base . '/fpdi/src/autoload.php';
-        if (!file_exists($fpdi)) throw new \Exception('FPDI autoload not found at: ' . $fpdi);
-        require_once $fpdi;
+        if (!class_exists('setasign\Fpdi\Fpdi', false)) {
+            $fpdi = $base . '/fpdi/src/autoload.php';
+            if (!file_exists($fpdi)) throw new \Exception('FPDI autoload not found at: ' . $fpdi);
+            require_once $fpdi;
+        }
 
         self::$libraries_loaded = true;
     }
 
     /**
      * Scale down PDF content to 95% so it fits within printer printable area.
+     * Reads the PDF from memory (no temp file): works where sys_get_temp_dir() is outside open_basedir.
      *
      * @param string $pdf_content Raw PDF bytes
      * @param float  $scale_factor Scale factor (default 0.95)
@@ -40,41 +48,27 @@ class CCPdfScaler {
     public static function scale_pdf(string $pdf_content, float $scale_factor = self::SCALE_FACTOR): string {
         self::load_libraries();
 
-        $tmp_dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cc_temp';
-        if (!is_dir($tmp_dir)) mkdir($tmp_dir, 0755, true);
+        $pdf        = new \setasign\Fpdi\Fpdi();
+        $page_count = $pdf->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($pdf_content));
 
-        $tmp_file = $tmp_dir . DIRECTORY_SEPARATOR . 'voucher-' . uniqid() . '.pdf';
-        if (file_put_contents($tmp_file, $pdf_content) === false) {
-            throw new \Exception('Δεν ήταν δυνατή η εγγραφή προσωρινού PDF');
+        for ($page_num = 1; $page_num <= $page_count; $page_num++) {
+            $template_id = $pdf->importPage($page_num);
+            $size        = $pdf->getTemplateSize($template_id);
+
+            $pdf->AddPage(
+                $size['width'] > $size['height'] ? 'L' : 'P',
+                [$size['width'], $size['height']]
+            );
+
+            $new_width  = $size['width']  * $scale_factor;
+            $new_height = $size['height'] * $scale_factor;
+            $x_offset   = ($size['width']  - $new_width)  / 2;
+            $y_offset   = ($size['height'] - $new_height) / 2;
+
+            $pdf->useTemplate($template_id, $x_offset, $y_offset, $new_width, $new_height);
         }
 
-        try {
-            $pdf        = new \setasign\Fpdi\Fpdi();
-            $page_count = $pdf->setSourceFile($tmp_file);
-
-            for ($page_num = 1; $page_num <= $page_count; $page_num++) {
-                $template_id = $pdf->importPage($page_num);
-                $size        = $pdf->getTemplateSize($template_id);
-
-                $pdf->AddPage(
-                    $size['width'] > $size['height'] ? 'L' : 'P',
-                    [$size['width'], $size['height']]
-                );
-
-                $new_width  = $size['width']  * $scale_factor;
-                $new_height = $size['height'] * $scale_factor;
-                $x_offset   = ($size['width']  - $new_width)  / 2;
-                $y_offset   = ($size['height'] - $new_height) / 2;
-
-                $pdf->useTemplate($template_id, $x_offset, $y_offset, $new_width, $new_height);
-            }
-
-            $scaled = $pdf->Output('S');
-        } finally {
-            @unlink($tmp_file);
-        }
-
-        return $scaled;
+        return $pdf->Output('S');
     }
 
     /**

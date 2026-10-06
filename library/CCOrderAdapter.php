@@ -7,14 +7,18 @@
  * For a courier/shipping extension we deliver to the SHIPPING address,
  * so every getter prefers shipping_* fields, then falls back to
  * payment_* fields, then to the customer-level fields.
+ *
+ * PHP 7.2+ syntax (no typed properties) - shared by the OpenCart 3 and 4 extensions.
  */
 
 namespace Opencart\Extension\Couriercenter\Library;
 
 class CCOrderAdapter {
 
-    private array $order;
-    private array $products; // from model_sale_order->getProducts($order_id)
+    /** @var array */
+    private $order;
+    /** @var array from model_sale_order->getProducts($order_id) */
+    private $products;
 
     /**
      * @param array $order    Row from model_sale_order->getOrder($order_id)
@@ -93,9 +97,15 @@ class CCOrderAdapter {
     }
 
     /**
-     * OC4 stores payment_method as JSON {"code":"cod.cod","name":"..."}.
+     * Payment method code.
+     * OpenCart 3 (and 4.0.0-4.0.1): order['payment_code'], e.g. "cod" - order['payment_method'] is only the title there.
+     * OpenCart 4.0.2+: order['payment_method'] = ['code' => 'cod.cod', 'name' => ...] (or that JSON as a string).
      */
     public function get_payment_method(): string {
+        $code = $this->order['payment_code'] ?? '';
+        if (is_string($code) && trim($code) !== '') {
+            return trim($code);
+        }
         $pm = $this->order['payment_method'] ?? '';
         if (is_array($pm)) {
             return (string)($pm['code'] ?? '');

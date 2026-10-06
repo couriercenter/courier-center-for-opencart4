@@ -46,6 +46,9 @@ $db = new \Opencart\System\Library\DB(
 
 // ── Φόρτωση CCApi ────────────────────────────────────────────────────────────
 require_once DIR_EXTENSION . 'couriercenter/library/CCApi.php';
+require_once DIR_EXTENSION . 'couriercenter/library/CCStatusTracker.php';
+
+use Opencart\Extension\Couriercenter\Library\CCStatusTracker;
 
 $api = new \Opencart\Extension\Couriercenter\Library\CCApi(
     getSetting($db, 'shipping_courier_center_user_alias'),
@@ -55,7 +58,6 @@ $api = new \Opencart\Extension\Couriercenter\Library\CCApi(
 );
 
 // ── Σταθερές ─────────────────────────────────────────────────────────────────
-$final_codes  = ['29', '25', '99', '14', '87', '95'];
 $min_interval = 3600; // 60 λεπτά μεταξύ checks ανά αποστολή
 
 // ── Εκτέλεση ─────────────────────────────────────────────────────────────────
@@ -87,9 +89,16 @@ foreach ($rows->rows as $shipment) {
         continue;
     }
 
-    $code  = (string)($result['StatusCode']        ?? $result['DeliveryStatus'] ?? '');
-    $desc  = (string)($result['StatusDescription'] ?? $result['DeliveryStatusDescription'] ?? '');
-    $final = in_array($code, $final_codes) ? 1 : 0;
+    $status = CCStatusTracker::parse_status($result);
+    $code   = $status['code'];
+    $desc   = $status['desc'];
+    if ($code === '' && $desc === '') {
+        // Remember the check (throttling) but keep the last known status.
+        $db->query("UPDATE `" . DB_PREFIX . "cc_shipments` SET `last_checked_at` = " . time() . " WHERE `order_id` = " . (int)$shipment['order_id']);
+        echo "  ERROR order #{$shipment['order_id']}: δεν βρέθηκε status στην απάντηση του API\n";
+        continue;
+    }
+    $final = CCStatusTracker::is_final($code) ? 1 : 0;
 
     $db->query(
         "UPDATE `" . DB_PREFIX . "cc_shipments`
@@ -102,8 +111,9 @@ foreach ($rows->rows as $shipment) {
 
     // Order history note + auto-complete on delivery (only when status changed).
     if ($code !== '' && $code !== (string)($shipment['status_code'] ?? '')) {
-        cc_add_order_history($db, (int)$shipment['order_id'], '📍 [Cron] Courier Center status: ' . $code . ' — ' . $desc);
-        if (in_array($code, ['29', '87'], true)) {
+        $action = $status['action'] !== '' ? ' (Action: ' . $status['action'] . ')' : '';
+        cc_add_order_history($db, (int)$shipment['order_id'], '📍 [Cron] Courier Center status: ' . $code . ' — ' . $desc . $action);
+        if (CCStatusTracker::is_delivered($code)) {
             $auto_status = (int)getSetting($db, 'shipping_courier_center_auto_complete_status_id');
             if ($auto_status > 0) {
                 cc_add_order_history($db, (int)$shipment['order_id'], '🚚 [Cron] Παραδόθηκε — αυτόματη ολοκλήρωση παραγγελίας.', $auto_status);

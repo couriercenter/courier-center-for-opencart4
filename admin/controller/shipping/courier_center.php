@@ -661,8 +661,8 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         }
 
         $this->load->model('extension/couriercenter/shipping/courier_center');
+        require_once DIR_EXTENSION . 'couriercenter/library/CCStatusTracker.php';
 
-        $final_codes = ['29', '25', '99', '14', '87', '95'];
         $updated = 0; $skipped = 0; $failed = 0; $errors = [];
 
         foreach ($order_ids as $order_id) {
@@ -677,13 +677,19 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
                 $errors[] = "#$order_id: " . $result['error'];
                 continue;
             }
-            $code = (string)($result['StatusCode']        ?? $result['DeliveryStatus'] ?? '');
-            $desc = (string)($result['StatusDescription'] ?? $result['DeliveryStatusDescription'] ?? '');
-            $final = in_array($code, $final_codes, true);
+            $status = \Opencart\Extension\Couriercenter\Library\CCStatusTracker::parse_status($result);
+            $code   = $status['code'];
+            $desc   = $status['desc'];
+            if ($code === '' && $desc === '') {
+                $failed++;
+                $errors[] = "#$order_id: Δεν βρέθηκε status στην απάντηση του API.";
+                continue;
+            }
+            $final = \Opencart\Extension\Couriercenter\Library\CCStatusTracker::is_final($code);
             $old_code = (string)($shipment['status_code'] ?? '');
             $this->model_extension_couriercenter_shipping_courier_center->updateStatus($order_id, $code, $desc, $final);
             if ($code !== '' && $code !== $old_code) {
-                $this->ccAddOrderHistory($order_id, sprintf('📍 [Bulk] Courier Center status: %s — %s', $code, $desc));
+                $this->ccAddOrderHistory($order_id, sprintf('📍 [Bulk] Courier Center status: %s — %s%s', $code, $desc, $this->ccStatusAction($status)));
                 $this->ccMaybeAutoComplete($order_id, $code);
             }
             $updated++;
@@ -774,17 +780,22 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             return;
         }
 
-        $final_codes = ['29', '25', '99', '14', '87', '95'];
-        $code  = (string)($result['StatusCode']        ?? $result['DeliveryStatus'] ?? '');
-        $desc  = (string)($result['StatusDescription'] ?? $result['DeliveryStatusDescription'] ?? '');
-        $final = in_array($code, $final_codes, true);
+        require_once DIR_EXTENSION . 'couriercenter/library/CCStatusTracker.php';
+        $status = \Opencart\Extension\Couriercenter\Library\CCStatusTracker::parse_status($result);
+        $code   = $status['code'];
+        $desc   = $status['desc'];
+        if ($code === '' && $desc === '') {
+            $this->response->setOutput(json_encode(['success' => false, 'error' => 'Δεν βρέθηκε status στην απάντηση του API.']));
+            return;
+        }
+        $final = \Opencart\Extension\Couriercenter\Library\CCStatusTracker::is_final($code);
 
         $old_code = (string)($shipment['status_code'] ?? '');
         $this->model_extension_couriercenter_shipping_courier_center->updateStatus($order_id, $code, $desc, $final);
 
         // Order History note + auto-complete, only when the status actually changed.
         if ($code !== '' && $code !== $old_code) {
-            $this->ccAddOrderHistory($order_id, sprintf('📍 Courier Center status: %s — %s', $code, $desc));
+            $this->ccAddOrderHistory($order_id, sprintf('📍 Courier Center status: %s — %s%s', $code, $desc, $this->ccStatusAction($status)));
             $this->ccMaybeAutoComplete($order_id, $code);
         }
 
@@ -1091,8 +1102,14 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
      * If a shipment reached a "delivered" status and auto-complete is configured,
      * move the order to the chosen status. Returns true if it changed the order.
      */
+    /** " (Action: N)" suffix for the history note, like the WooCommerce plugin. */
+    private function ccStatusAction(array $status): string {
+        return $status['action'] !== '' ? ' (Action: ' . $status['action'] . ')' : '';
+    }
+
     private function ccMaybeAutoComplete(int $order_id, string $status_code): bool {
-        if (!in_array($status_code, ['29', '87'], true)) return false;
+        require_once DIR_EXTENSION . 'couriercenter/library/CCStatusTracker.php';
+        if (!\Opencart\Extension\Couriercenter\Library\CCStatusTracker::is_delivered($status_code)) return false;
 
         $auto_status = (int)$this->config->get($this->prefix . 'auto_complete_status_id');
         if ($auto_status <= 0) return false;

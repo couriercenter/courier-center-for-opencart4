@@ -164,7 +164,12 @@ class CCReturnsSettings {
      * @return string[] warnings for the admin
      */
     public static function sanitizePost(array &$post, array $known_codes): array {
-        foreach (['enabled', 'require_approval', 'method_dropoff', 'method_boxnow'] as $f) {
+        // A field the form did not send gets the safe default (approval on, Drop Off on), never "off".
+        foreach (['enabled' => '0', 'require_approval' => '1', 'method_dropoff' => '1', 'method_boxnow' => '0'] as $f => $default) {
+            if (!array_key_exists(self::P . $f, $post)) {
+                $post[self::P . $f] = $default;
+                continue;
+            }
             $post[self::P . $f] = !empty($post[self::P . $f]) && (string)$post[self::P . $f] !== '0' ? '1' : '0';
         }
         $post[self::P . 'window_days'] = (string)max(0, (int)($post[self::P . 'window_days'] ?? 14));

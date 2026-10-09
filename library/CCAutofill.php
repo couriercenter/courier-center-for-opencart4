@@ -34,7 +34,7 @@ class CCAutofill {
             'address'  => trim((string)($shipper['Address'] ?? '')),
             'postcode' => trim((string)($shipper['ZipCode'] ?? '')),
             'city'     => trim((string)($shipper['City'] ?? '')),
-            'phone'    => trim((string)($shipper['Phones'] ?? '')),
+            'phone'    => self::phone($shipper['Phones'] ?? ''),
             'station'  => trim((string)($info['PickupStation'] ?? '')),
         ];
         $warning = $api->void_shipment($awb) === true ? '' : 'Η test αποστολή ' . $awb . ' δεν ακυρώθηκε αυτόματα. Ακύρωσέ την από το Courier Center.';
@@ -42,6 +42,17 @@ class CCAutofill {
             return ['ok' => false, 'account_ok' => true, 'warning' => $warning, 'error' => 'Ο κωδικός δουλεύει, αλλά το API δεν επέστρεψε στοιχεία αποστολέα. Συμπλήρωσέ τα χειροκίνητα.' . ($warning !== '' ? ' ' . $warning : '')];
         }
         return ['ok' => true, 'data' => $data, 'warning' => $warning];
+    }
+
+    /** Phones comes as a string or (some accounts) as a list. */
+    private static function phone($v): string {
+        if (is_array($v)) {
+            $v = reset($v);
+            if (is_array($v)) {
+                $v = $v['Number'] ?? $v['Phone'] ?? reset($v);
+            }
+        }
+        return trim(is_scalar($v) ? (string)$v : '');
     }
 
     /** The test shipment: Requestor = Shipper = the account being checked. */

@@ -35,7 +35,7 @@ class CCAutofill {
             'postcode' => trim((string)($shipper['ZipCode'] ?? '')),
             'city'     => trim((string)($shipper['City'] ?? '')),
             'phone'    => self::phone($shipper['Phones'] ?? ''),
-            'station'  => trim((string)($info['PickupStation'] ?? '')),
+            'station'  => is_array($info['PickupStation'] ?? null) ? trim((string)($info['PickupStation']['Prefix'] ?? '')) : '',
         ];
         $warning = $api->void_shipment($awb) === true ? '' : 'Η test αποστολή ' . $awb . ' δεν ακυρώθηκε αυτόματα. Ακύρωσέ την από το Courier Center.';
         if ($data['name'] === '' && $data['address'] === '' && $data['postcode'] === '') {

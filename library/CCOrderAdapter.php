@@ -92,6 +92,11 @@ class CCOrderAdapter {
         return $c !== '' ? $c : 'GR';
     }
 
+    /** The customer's checkout comment (order['comment']), as plain text. */
+    public function get_customer_note(): string {
+        return trim(html_entity_decode((string)($this->order['comment'] ?? ''), ENT_QUOTES, 'UTF-8'));
+    }
+
     public function get_total(): float {
         return (float)($this->order['total'] ?? 0);
     }

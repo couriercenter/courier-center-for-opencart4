@@ -60,6 +60,9 @@ class CCShipmentBuilder {
         foreach ($required as $key => $label) {
             if (empty($this->settings[$key])) $missing[] = $label;
         }
+        if ($missing && $this->shipper_account() !== (string)$this->settings['billing_account']) {
+            return 'Το σημείο αποστολής ' . $this->shipper_account() . ' δεν έχει στοιχεία αποστολέα — κάνε «Test & Auto-fill» στον υποκωδικό στις ρυθμίσεις.';
+        }
         if ($missing) return 'Λείπουν ρυθμίσεις: ' . implode(', ', $missing);
         return true;
     }
@@ -140,12 +143,12 @@ class CCShipmentBuilder {
                 'ApiKey'          => $this->settings['api_key'],
             ],
             'shipmentDate' => date('Y-m-d'),
-            'comments'     => 'Order #' . $this->order->get_id(),
+            'comments'     => $this->build_comments(),
             'Requestor'    => [
-                'CarrierBillingAccount' => $this->settings['billing_account'],
+                'CarrierBillingAccount' => $this->requestor_account(),
             ],
             'Shipper'      => [
-                'CarrierBillingAccount' => $this->settings['billing_account'],
+                'CarrierBillingAccount' => $this->shipper_account(),
                 'CompanyName'           => $this->settings['shipper_name'],
                 'ContactName'           => $this->settings['shipper_name'],
                 'Address'               => $this->settings['shipper_address'],
@@ -184,6 +187,43 @@ class CCShipmentBuilder {
         }
 
         return $payload;
+    }
+
+    /**
+     * Send the voucher from a pickup point (CCPickupPoints::get_point()): the point's code goes to
+     * Shipper.CarrierBillingAccount (the API then uses that account's sender/pickup data), the billing
+     * code to Requestor. Without this call the payload is the one of the main account.
+     */
+    public function use_pickup_point(array $point): void {
+        $this->settings['shipper_account']   = (string)($point['code'] ?? '');
+        $this->settings['requestor_account'] = (string)($point['requestor'] ?? ($point['code'] ?? ''));
+        foreach (['name' => 'shipper_name', 'address' => 'shipper_address', 'postal' => 'shipper_postal', 'city' => 'shipper_city'] as $from => $to) {
+            $this->settings[$to] = (string)($point[$from] ?? '');
+        }
+        // The API uses the sub-code's own phone anyway: the main phone is enough to pass validation.
+        if (trim((string)($point['phone'] ?? '')) !== '') {
+            $this->settings['shipper_phone'] = (string)$point['phone'];
+        }
+        $this->settings['shipper_station'] = CCCityScope::get_station_for_postcode((string)($point['postal'] ?? ''));
+    }
+
+    public function shipper_account(): string {
+        $v = (string)($this->settings['shipper_account'] ?? '');
+        return $v !== '' ? $v : (string)$this->settings['billing_account'];
+    }
+
+    public function requestor_account(): string {
+        $v = (string)($this->settings['requestor_account'] ?? '');
+        return $v !== '' ? $v : (string)$this->settings['billing_account'];
+    }
+
+    /** The customer's checkout note (whitespace collapsed, max 200 chars), else "Order #id". */
+    private function build_comments(): string {
+        $note = trim((string)preg_replace('/\s+/u', ' ', $this->order->get_customer_note()));
+        if ($note === '') {
+            return 'Order #' . $this->order->get_id();
+        }
+        return function_exists('mb_substr') ? mb_substr($note, 0, 200, 'UTF-8') : substr($note, 0, 200);
     }
 
     private function build_consignee(): array {

@@ -78,7 +78,8 @@ class CCApi {
             return ['success' => false, 'error' => $error, 'raw' => $response];
 
         } catch (\Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
+            // Transport failure (timeout, HTTP error): the shipment MAY exist - callers must verify before retrying.
+            return ['success' => false, 'error' => $e->getMessage(), 'exception' => true];
         }
     }
 
@@ -178,10 +179,11 @@ class CCApi {
     }
 
     /**
-     * Get manifest PDF for a date (YYYY-MM-DD)
+     * Get manifest PDF for a date (YYYY-MM-DD). With $account (a pickup point / sub-code) only the
+     * shipments sent FROM that account are listed (the API matches CustomerAccount on the shipper).
      * @return string|array Raw PDF bytes on success, or ['success'=>false, 'error'=>'...'] on failure
      */
-    public function get_manifest(string $date) {
+    public function get_manifest(string $date, string $account = '') {
         $d = \DateTime::createFromFormat('Y-m-d', $date);
         if (!$d || $d->format('Y-m-d') !== $date) {
             return ['success' => false, 'error' => 'Μη έγκυρη ημερομηνία (YYYY-MM-DD)'];
@@ -191,7 +193,7 @@ class CCApi {
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode(['context' => $this->get_context(), 'Date' => $date]),
+            CURLOPT_POSTFIELDS     => json_encode($this->manifest_body($date, $account)),
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_TIMEOUT        => 60,
         ]);
@@ -219,6 +221,14 @@ class CCApi {
             return ['success' => false, 'error' => 'Μη έγκυρο PDF από API'];
         }
         return $pdf;
+    }
+
+    private function manifest_body(string $date, string $account): array {
+        $body = ['context' => $this->get_context(), 'Date' => $date];
+        if (trim($account) !== '') {
+            $body['CustomerAccount'] = trim($account);
+        }
+        return $body;
     }
 
     private function get_context(): array {

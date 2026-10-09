@@ -12,6 +12,7 @@ class CCStatusTracker {
     const FINAL_CODES     = ['29', '25', '99', '14', '87', '95'];
     const DELIVERED_CODES = ['29', '87'];
     const MIN_INTERVAL    = 3600;
+    const CRON_LIMIT      = 200;
 
     /** @var object */
     private $db;
@@ -23,13 +24,25 @@ class CCStatusTracker {
     private $auto_complete_status_id;
     /** @var CCOrderHistory */
     private $history;
+    /** @var int[] order statuses of orders still on their way (pending + processing) */
+    private $active_statuses;
+    /** @var int[] the shop's "complete" statuses */
+    private $complete_statuses;
 
-    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0) {
+    /**
+     * @param array $status_sets ['active' => int[], 'complete' => int[]] (CCVoucherService::statusSets()).
+     *                           Auto-complete only moves orders that are in an active status, so a
+     *                           cancelled / refunded order is never completed; the cron skips orders
+     *                           that are neither active nor complete.
+     */
+    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0, array $status_sets = []) {
         $this->db = $db;
         $this->prefix = $prefix;
         $this->api = $api;
         $this->auto_complete_status_id = $auto_complete_status_id;
         $this->history = new CCOrderHistory($db, $prefix);
+        $this->active_statuses = array_values(array_filter(array_map('intval', $status_sets['active'] ?? [])));
+        $this->complete_statuses = array_values(array_filter(array_map('intval', $status_sets['complete'] ?? [])));
     }
 
     /**
@@ -37,10 +50,22 @@ class CCStatusTracker {
      * ShipmentDetails[0].ShipmentInfo (that is what the WooCommerce plugin reads);
      * the top-level keys used by the first OpenCart 4 release are a fallback.
      *
+     * The details of an AWB also list every return shipment whose Reference1 is that AWB: the entry
+     * whose ShipmentAwb is the requested AWB is used, the first one only as a fallback.
+     *
      * @return array ['code' => string, 'desc' => string, 'action' => string]
      */
-    public static function parse_status(array $result): array {
+    public static function parse_status(array $result, string $awb = ''): array {
         $info = $result['ShipmentDetails'][0]['ShipmentInfo'] ?? null;
+        if ($awb !== '' && isset($result['ShipmentDetails']) && is_array($result['ShipmentDetails'])) {
+            foreach ($result['ShipmentDetails'] as $detail) {
+                $candidate = $detail['ShipmentInfo'] ?? null;
+                if (is_array($candidate) && trim((string)($candidate['ShipmentAwb'] ?? '')) === $awb) {
+                    $info = $candidate;
+                    break;
+                }
+            }
+        }
         if (is_array($info) && (isset($info['ShipmentStatus']) || isset($info['ShipmentStatusDesc']))) {
             return [
                 'code'   => trim((string)($info['ShipmentStatus'] ?? '')),
@@ -65,6 +90,17 @@ class CCStatusTracker {
         return in_array($code, self::DELIVERED_CODES, true);
     }
 
+    /** Minutes left before the shipment may be asked again (0 = now). Manual, bulk and cron share the limit. */
+    public static function wait_minutes(array $shipment, int $now = 0): int {
+        $now = $now > 0 ? $now : time();
+        $last = (int)($shipment['last_checked_at'] ?? 0);
+        $elapsed = $now - $last;
+        if ($last <= 0 || $elapsed >= self::MIN_INTERVAL) {
+            return 0;
+        }
+        return max(1, (int)ceil((self::MIN_INTERVAL - $elapsed) / 60));
+    }
+
     /**
      * Ask the API for one shipment's status and store it.
      *
@@ -87,7 +123,7 @@ class CCStatusTracker {
             return $out;
         }
 
-        $status = self::parse_status($result);
+        $status = self::parse_status($result, $awb);
         if ($status['code'] === '' && $status['desc'] === '') {
             // Remember the check (throttling) but keep the last known status.
             $this->db->query("UPDATE `" . $this->prefix . "cc_shipments` SET `last_checked_at` = '" . time() . "' WHERE `order_id` = '" . $order_id . "'");
@@ -104,13 +140,15 @@ class CCStatusTracker {
         $out['desc'] = $status['desc'];
         $out['final'] = $final;
 
+        $label = $source !== '' ? '[' . $source . '] ' : '';
         if ($code !== '' && $code !== (string)($shipment['status_code'] ?? '')) {
-            $label  = $source !== '' ? '[' . $source . '] ' : '';
             $action = $status['action'] !== '' ? ' (Action: ' . $status['action'] . ')' : '';
             $this->history->add($order_id, '📍 ' . $label . 'Courier Center status: ' . $code . ' — ' . $status['desc'] . $action);
             $out['changed'] = true;
-            $out['completed'] = $this->maybe_auto_complete($order_id, $code, $label);
         }
+        // Also when the code did not change: a delivered order that stayed in an active status
+        // (e.g. auto-complete was off at the time) is completed on the next refresh.
+        $out['completed'] = $this->maybe_auto_complete($order_id, $code, $label);
         return $out;
     }
 
@@ -123,7 +161,7 @@ class CCStatusTracker {
     public function run(int $now = 0, int $pause_us = 250000): array {
         $now = $now > 0 ? $now : time();
         $report = ['checked' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'lines' => []];
-        $rows = $this->db->query("SELECT * FROM `" . $this->prefix . "cc_shipments` WHERE `is_voided` = 0 AND `is_final` = 0 AND `voucher_number` != ''")->rows;
+        $rows = $this->db->query($this->cron_sql())->rows;
         foreach ($rows as $row) {
             $last = (int)($row['last_checked_at'] ?? 0);
             if ($last > 0 && ($now - $last) < self::MIN_INTERVAL) {
@@ -146,6 +184,21 @@ class CCStatusTracker {
         return $report;
     }
 
+    /**
+     * Active (not voided, not final) shipments, oldest check first, at most CRON_LIMIT. With known
+     * status sets only orders in an active or complete status (cancelled / refunded ones are skipped).
+     */
+    private function cron_sql(): string {
+        $sql = "SELECT s.* FROM `" . $this->prefix . "cc_shipments` s";
+        $where = "s.`is_voided` = 0 AND s.`is_final` = 0 AND s.`voucher_number` != ''";
+        $statuses = array_unique(array_merge($this->active_statuses, $this->complete_statuses));
+        if ($statuses) {
+            $sql .= " JOIN `" . $this->prefix . "order` o ON o.`order_id` = s.`order_id`";
+            $where .= " AND o.`order_status_id` IN (" . implode(',', array_map('intval', $statuses)) . ")";
+        }
+        return $sql . " WHERE " . $where . " ORDER BY (s.`last_checked_at` IS NULL) DESC, s.`last_checked_at` ASC, s.`order_id` ASC LIMIT " . self::CRON_LIMIT;
+    }
+
     private function maybe_auto_complete(int $order_id, string $code, string $label): bool {
         if ($this->auto_complete_status_id <= 0 || !self::is_delivered($code)) {
             return false;
@@ -153,6 +206,13 @@ class CCStatusTracker {
         $cur = $this->db->query("SELECT `order_status_id` FROM `" . $this->prefix . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
         if (!$cur->num_rows || (int)$cur->row['order_status_id'] === $this->auto_complete_status_id) {
             return false;
+        }
+        $current = (int)$cur->row['order_status_id'];
+        if ($current <= 0 || in_array($current, $this->complete_statuses, true)) {
+            return false; // abandoned checkout, or already in one of the shop's complete statuses
+        }
+        if ($this->active_statuses && !in_array($current, $this->active_statuses, true)) {
+            return false; // cancelled / refunded / on hold by the merchant ...: never auto-completed
         }
         return $this->history->add($order_id, '🚚 ' . $label . 'Courier Center: Η αποστολή παραδόθηκε — αυτόματη ολοκλήρωση παραγγελίας.', $this->auto_complete_status_id);
     }

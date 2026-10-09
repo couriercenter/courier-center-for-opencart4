@@ -1,0 +1,35 @@
+<div id="cc-returns" class="my-4">
+  <h2>↩️ Επιστροφές</h2>
+  {% if flash %}<div class="alert alert-success"><i class="fa-solid fa-circle-check"></i> {{ flash|e }}</div>{% endif %}
+  {% for r in requests %}
+  <div class="card mb-2">
+    <div class="card-body">
+      <strong>Αίτημα #{{ r.id|e }}</strong> — {{ r.status_label|e }} <small class="text-muted">({{ r.date|e }})</small><br>
+      <small>{{ r.method_label|e }} · {{ r.items|e }}</small>
+      {% if r.parts %}
+      <div class="alert alert-success mt-2 mb-0">
+        {% for p in r.parts %}
+          {% if loop.first %}<strong>{{ p.text|e }}</strong>{% else %}<br>{{ p.text|e }}{% if p.value %}{% if p.is_code %}<strong style="font-size:16px; letter-spacing:1px;">{{ p.value|e }}</strong> <button type="button" class="btn btn-light btn-sm cc-copy" data-copy="{{ p.value|e }}">Αντιγραφή</button>{% else %}<strong>{{ p.value|e }}</strong>{% endif %}{% endif %}{% endif %}
+        {% endfor %}
+        {% if r.instructions %}<p class="mt-2 mb-0">{{ r.instructions|e|nl2br }}</p>{% endif %}
+        {% if r.tracking %}<p class="mt-2 mb-0">📍 Κατάσταση αποστολής: {{ r.tracking|e }}</p>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if can_request %}<a href="{{ url_request|e }}" class="btn btn-primary"><i class="fa-solid fa-rotate-left"></i> Αίτημα επιστροφής</a>{% endif %}
+</div>
+<script>
+(function () {
+  var box = document.getElementById('cc-returns');
+  if (!box) return;
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.cc-copy') : null;
+    if (!b) return;
+    var v = b.getAttribute('data-copy');
+    if (navigator.clipboard) { navigator.clipboard.writeText(v); } else { var t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (err) {} document.body.removeChild(t); }
+    b.textContent = '✓ Αντιγράφηκε';
+  });
+})();
+</script>

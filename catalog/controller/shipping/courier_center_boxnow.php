@@ -90,7 +90,15 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
         }
 
         $sel = $this->session->data['cc_boxnow'] ?? [];
-        if (empty($sel['selected']) || empty($sel['delivery_mode'])) {
+        if (empty($sel['selected'])) {
+            return;
+        }
+        // Only for an order with a shipping method that offers BOX NOW (the choice may be left from another method).
+        $allowed = $this->config->get('shipping_courier_center_boxnow_shipping_methods');
+        $allowed = (is_array($allowed) && $allowed) ? array_map('strval', $allowed) : ['courier_center'];
+        $sm = $args[0]['shipping_method'] ?? [];
+        $code = is_array($sm) ? (string)($sm['code'] ?? '') : (string)($args[0]['shipping_code'] ?? '');
+        if (!in_array(explode('.', $code)[0], $allowed, true)) {
             return;
         }
 
@@ -103,10 +111,13 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
         if (!is_array($custom)) {
             $custom = [];
         }
-        $custom['cc_delivery_mode'] = (string)$sel['delivery_mode'];
-        $custom['cc_locker_id']     = (string)($sel['locker_id'] ?? '');
-        $custom['cc_locker_code']   = (string)($sel['locker_code'] ?? '');
-        $custom['cc_locker_name']   = (string)($sel['locker_name'] ?? '');
+        // Server-side check: "pick" without a locker becomes "auto" (nearest locker), like OpenCart 3.
+        $locker_id = trim((string)($sel['locker_id'] ?? ''));
+        $pick = (string)$sel['delivery_mode'] === 'pick' && $locker_id !== '';
+        $custom['cc_delivery_mode'] = $pick ? 'pick' : 'auto';
+        $custom['cc_locker_id']     = $pick ? $locker_id : '';
+        $custom['cc_locker_code']   = $pick ? (string)($sel['locker_code'] ?? '') : '';
+        $custom['cc_locker_name']   = $pick ? (string)($sel['locker_name'] ?? '') : '';
 
         $this->db->query(
             "UPDATE `" . DB_PREFIX . "order` SET `custom_field` = '" . $this->db->escape(json_encode($custom)) . "'

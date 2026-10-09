@@ -2,74 +2,57 @@
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
-      <div class="pull-right">
-        <a href="{{ url_settings }}" class="btn btn-default">
-          <i class="fa fa-cog"></i> Ρυθμίσεις
-        </a>
-      </div>
-      <h1><i class="fa fa-truck"></i> Manifest Παραλαβής</h1>
-      <ul class="breadcrumb">
-        {% for breadcrumb in breadcrumbs %}
-        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
-        {% endfor %}
-      </ul>
+      <div class="float-end"><a href="{{ url_settings|e }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> Ρυθμίσεις</a></div>
+      <h1><i class="fa-solid fa-truck"></i> Manifest Παραλαβής</h1>
+      <ol class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}<li class="breadcrumb-item"><a href="{{ breadcrumb.href|e }}">{{ breadcrumb.text|e }}</a></li>{% endfor %}
+      </ol>
     </div>
   </div>
-
   <div class="container-fluid">
     <p class="text-muted">Εκτυπώστε τη λίστα αποστολών που θα παραληφθούν από τον οδηγό για μια συγκεκριμένη ημέρα.</p>
-
-    <div class="panel panel-default" style="max-width:700px;">
-      <div class="panel-heading"><h3 class="panel-title">📅 Επιλογή Ημερομηνίας</h3></div>
-      <div class="panel-body">
-
-        <form method="get" action="{{ url_self }}" class="form-inline" style="gap:10px; display:flex; align-items:flex-end; flex-wrap:wrap;">
+    <div class="card" style="max-width:720px;">
+      <div class="card-header">📅 Επιλογή Ημερομηνίας</div>
+      <div class="card-body">
+        {# GET forms drop the query string of "action": route + user_token travel as hidden fields. #}
+        <form method="get" action="index.php" class="d-flex flex-wrap gap-2 align-items-end">
+          <input type="hidden" name="route" value="{{ route|e }}">
+          <input type="hidden" name="user_token" value="{{ user_token|e }}">
           <div>
-            <label class="control-label" style="display:block; margin-bottom:4px;">Ημερομηνία παραλαβής:</label>
-            <input type="date" name="manifest_date" value="{{ selected_date }}" class="form-control"
-                   max="{{ today }}" style="width:180px;">
+            <label class="form-label">Ημερομηνία παραλαβής:</label>
+            <input type="date" name="manifest_date" value="{{ selected_date|e }}" class="form-control" max="{{ tomorrow|e }}" style="width:180px;">
           </div>
-          <button type="submit" class="btn btn-default">Ενημέρωση</button>
-        </form>
-
-        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-          <a href="{{ url_self }}&manifest_date={{ today }}"
-             class="btn btn-xs btn-default{% if selected_date == today %} active{% endif %}">
-            📅 Σήμερα
-          </a>
-          <a href="{{ url_self }}&manifest_date={{ yesterday }}"
-             class="btn btn-xs btn-default{% if selected_date == yesterday %} active{% endif %}">
-            ← Χθες
-          </a>
-          <a href="{{ url_self }}&manifest_date={{ day_before }}"
-             class="btn btn-xs btn-default{% if selected_date == day_before %} active{% endif %}">
-            ← Προχθές
-          </a>
-        </div>
-
-        <div style="margin-top:16px; padding:12px 16px; background:#f0f6fc; border-left:4px solid #2271b1; border-radius:3px;">
-          <strong>📦 {{ vouchers_count }} vouchers</strong> για <strong>{{ greek_date }}</strong>
-          {% if vouchers_count == 0 %}
-          <br><small style="color:#8b0000;">Δεν έχουν δημιουργηθεί vouchers για αυτή την ημερομηνία. Το manifest μπορεί να είναι κενό.</small>
+          {% if point_options %}
+          <div>
+            <label class="form-label">Σημείο:</label>
+            <select name="account" class="form-select">
+              <option value="">Όλα τα σημεία</option>
+              {% for pt in point_options %}<option value="{{ pt.code|e }}"{% if pt.code == selected_account %} selected{% endif %}>{{ pt.label|e }}</option>{% endfor %}
+            </select>
+          </div>
           {% endif %}
+          <button type="submit" class="btn btn-light">Ενημέρωση</button>
+        </form>
+        <div class="mt-3 d-flex flex-wrap gap-2">
+          <a href="{{ url_self|e }}&amp;manifest_date={{ tomorrow|e }}" class="btn btn-sm btn-light{% if selected_date == tomorrow %} active{% endif %}">Αύριο →</a>
+          <a href="{{ url_self|e }}&amp;manifest_date={{ today|e }}" class="btn btn-sm btn-light{% if selected_date == today %} active{% endif %}">📅 Σήμερα</a>
+          <a href="{{ url_self|e }}&amp;manifest_date={{ yesterday|e }}" class="btn btn-sm btn-light{% if selected_date == yesterday %} active{% endif %}">← Χθες</a>
+          <a href="{{ url_self|e }}&amp;manifest_date={{ day_before|e }}" class="btn btn-sm btn-light{% if selected_date == day_before %} active{% endif %}">← Προχθές</a>
         </div>
-
-        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-          <a href="{{ url_download }}" target="_blank" class="btn btn-primary">
-            <i class="fa fa-file-pdf-o"></i> Προβολή Manifest PDF
-          </a>
-          <a href="{{ url_download_save }}" class="btn btn-default">
-            <i class="fa fa-download"></i> Αποθήκευση ως αρχείο
-          </a>
+        <div class="mt-3 p-3" style="background:#f0f6fc; border-left:4px solid #2271b1; border-radius:3px;">
+          <strong>📦 {{ vouchers_count|e }} vouchers</strong> για <strong>{{ greek_date|e }}</strong>
+          {% if vouchers_count == 0 %}<br><small style="color:#8b0000;">Δεν έχουν δημιουργηθεί vouchers για αυτή την ημερομηνία. Το manifest μπορεί να είναι κενό.</small>{% endif %}
         </div>
-
-        <div style="margin-top:20px; padding:12px 16px; background:#fff8e1; border-left:4px solid #ffc107; border-radius:3px; font-size:13px; line-height:1.6;">
+        <div class="mt-3 d-flex flex-wrap gap-2">
+          <a href="{{ url_download|e }}" target="_blank" class="btn btn-primary"><i class="fa-solid fa-file-pdf"></i> Προβολή Manifest PDF</a>
+          <a href="{{ url_download_save|e }}" class="btn btn-light"><i class="fa-solid fa-download"></i> Αποθήκευση ως αρχείο</a>
+        </div>
+        <div class="mt-4 p-3" style="background:#fff8e1; border-left:4px solid #ffc107; border-radius:3px; font-size:13px; line-height:1.6;">
           <strong>💡 Πώς λειτουργεί:</strong><br>
           • Το Manifest παράγεται απευθείας από το σύστημα της Courier Center.<br>
           • Δώστε εκτυπωμένο το manifest στον οδηγό — θα το υπογράψει ως απόδειξη παραλαβής.<br>
-          • Αν αποστολή δεν εμφανίζεται, επικοινωνήστε με την Courier Center.
+          • Με υποκωδικούς, διάλεξε «Σημείο» για τη λίστα κάθε σημείου (ο οδηγός κάθε σταθμού παίρνει τη δική του).
         </div>
-
       </div>
     </div>
   </div>

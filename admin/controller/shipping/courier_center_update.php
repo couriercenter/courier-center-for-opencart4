@@ -1,6 +1,8 @@
 <?php
 namespace Opencart\Admin\Controller\Extension\Couriercenter\Shipping;
 
+require_once DIR_EXTENSION . 'couriercenter/library/oc4/loader.php';
+
 /**
  * GitHub-based auto-updater (WooCommerce-style "update available" + one click).
  *
@@ -81,7 +83,7 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
                 throw new \Exception('Δεν υπάρχει νεότερη έκδοση (τρέχουσα: ' . $current . ').');
             }
 
-            // Prefer an attached .zip asset; otherwise the source zipball.
+            // Only the attached release .zip: the source zipball would install the whole repository.
             $zip_url = '';
             foreach (($rel['assets'] ?? []) as $a) {
                 if (!empty($a['browser_download_url']) && stripos((string)$a['name'], '.zip') !== false) {
@@ -89,8 +91,7 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
                     break;
                 }
             }
-            if ($zip_url === '') $zip_url = (string)($rel['zipball_url'] ?? '');
-            if ($zip_url === '') throw new \Exception('Δεν βρέθηκε zip στο release.');
+            if ($zip_url === '') throw new \Exception('Το release ' . $latest . ' δεν έχει ακόμα συνημμένο αρχείο .zip. Δοκίμασε ξανά σε λίγα λεπτά.');
 
             $tmp = DIR_STORAGE . 'cc_update/';
             $this->rrmdir($tmp);
@@ -124,10 +125,11 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
             // Forget the "update available" cache so the banner clears right away.
             $this->clearUpdateCache();
 
+            // New events / permissions / tables are added on the next admin page (CCOc4Setup::repairIfUpdated).
             $this->response->setOutput(json_encode([
                 'success' => true,
                 'version' => $latest,
-                'message' => 'Ενημερώθηκε σε έκδοση ' . $latest . '. Αν προστέθηκαν νέα events, τρέξε μία φορά το setup.php. Backup: ' . basename($backup),
+                'message' => 'Ενημερώθηκε σε έκδοση ' . $latest . '. Backup: ' . basename($backup),
             ]));
         } catch (\Throwable $e) {
             $this->response->setOutput(json_encode(['success' => false, 'error' => $e->getMessage()]));
@@ -141,6 +143,12 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
      * it never hits the network on the hot path more than twice a day.
      */
     public function notice(string &$route, array &$args, mixed &$output): void {
+        // Files updated (one-click update or by hand): tables, events and permissions follow, once.
+        try {
+            \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::repairIfUpdated($this->db, DB_PREFIX);
+        } catch (\Throwable $e) {
+            $this->log->write('Courier Center repair after update: ' . $e->getMessage());
+        }
         if (self::GITHUB_REPO === '') {
             return;
         }

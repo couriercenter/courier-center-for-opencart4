@@ -1,0 +1,88 @@
+{{ header }}
+<div id="account-return-cc" class="container">
+  <ul class="breadcrumb">
+    {% for breadcrumb in breadcrumbs %}<li class="breadcrumb-item"><a href="{{ breadcrumb.href|e }}">{{ breadcrumb.text|e }}</a></li>{% endfor %}
+  </ul>
+  <div class="row">{{ column_left }}
+    <div id="content" class="col">{{ content_top }}
+      <h1>Αίτημα επιστροφής — Παραγγελία #{{ order_id|e }}</h1>
+      {% if error %}<div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation"></i> {{ error|e }}</div>{% endif %}
+      {% if blocked %}
+      <div class="text-end"><a href="{{ back|e }}" class="btn btn-light">Επιστροφή στην παραγγελία</a></div>
+      {% else %}
+      <form action="{{ action|e }}" method="post" id="cc-return-form">
+        <input type="hidden" name="request_uid" value="{{ request_uid|e }}">
+        <fieldset class="mb-3">
+          <legend>Προϊόντα</legend>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead><tr><th>Προϊόν</th><th class="text-center" style="width:110px;">Αγοράστηκαν</th><th style="width:150px;">Για επιστροφή</th></tr></thead>
+              <tbody>
+                {% for it in items %}
+                <tr>
+                  <td>{{ it.name|e }}{% if it.model %} <small class="text-muted">({{ it.model|e }})</small>{% endif %}</td>
+                  <td class="text-center">{{ it.ordered|e }}</td>
+                  <td>{% if it.available > 0 %}<input type="number" name="qty[{{ it.id|e }}]" value="{{ it.value|e }}" min="0" max="{{ it.available|e }}" class="form-control form-control-sm">{% else %}<small class="text-muted">Έχει ήδη ζητηθεί</small>{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <label class="form-label" for="cc-reason">Λόγος (προαιρετικό)</label>
+          <textarea name="reason" id="cc-reason" rows="3" maxlength="500" class="form-control">{{ reason|e }}</textarea>
+        </fieldset>
+        <fieldset class="mb-3">
+          <legend>Τρόπος επιστροφής</legend>
+          {% for m in methods %}
+          <div class="form-check"><input class="form-check-input" type="radio" name="method" id="cc-m-{{ loop.index|e }}" value="{{ m.code|e }}"{% if m.code == method %} checked{% endif %}><label class="form-check-label" for="cc-m-{{ loop.index|e }}">{{ m.label|e }}</label></div>
+          {% endfor %}
+          <div id="cc-sizes" class="ms-4 mt-2"{% if method != boxnow %} style="display:none;"{% endif %}>
+            <p class="mb-1"><strong>Μέγεθος θυρίδας BOX NOW</strong></p>
+            {% for sz in sizes %}
+            <div class="form-check"><input class="form-check-input" type="radio" name="locker_size" id="cc-sz-{{ sz.code|e }}" value="{{ sz.code|e }}"{% if sz.code == locker_size %} checked{% endif %}><label class="form-check-label" for="cc-sz-{{ sz.code|e }}">{{ sz.label|e }} <small class="text-muted">({{ sz.dims|e }})</small></label></div>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <fieldset class="mb-3">
+          <legend>Στοιχεία αποστολέα</legend>
+          <div class="mb-3 required"><label class="form-label" for="cc-name">Ονοματεπώνυμο</label><input type="text" name="name" id="cc-name" value="{{ name|e }}" class="form-control"></div>
+          <div class="mb-3"><label class="form-label" for="cc-mobile">Κινητό</label><input type="tel" name="mobile" id="cc-mobile" value="{{ mobile|e }}" class="form-control" placeholder="69XXXXXXXX"></div>
+          <div class="mb-3" id="cc-landline-row"><label class="form-label" for="cc-landline">Σταθερό</label><input type="tel" name="landline" id="cc-landline" value="{{ landline|e }}" class="form-control" placeholder="2XXXXXXXXX"></div>
+          <div class="form-text" id="cc-phone-help"></div>
+        </fieldset>
+        <div class="d-flex justify-content-between">
+          <a href="{{ back|e }}" class="btn btn-light">Άκυρο</a>
+          <button type="submit" class="btn btn-primary" id="cc-submit">Υποβολή αιτήματος</button>
+        </div>
+      </form>
+      <script>
+      (function () {
+        var form = document.getElementById('cc-return-form'), BOXNOW = {{ boxnow|json_encode }};
+        var MSG_PHONE = {{ msg_phone|json_encode }}, MSG_MOBILE = {{ msg_mobile|json_encode }};
+        function method() { var c = form.querySelector('input[name="method"]:checked'); return c ? c.value : ''; }
+        function digits(v) { v = String(v || '').replace(/\D+/g, ''); if (v.indexOf('0030') === 0) v = v.slice(4); else if (v.indexOf('30') === 0 && v.length === 12) v = v.slice(2); return v; }
+        function refresh() {
+          var bn = method() === BOXNOW;
+          document.getElementById('cc-sizes').style.display = bn ? '' : 'none';
+          document.getElementById('cc-landline-row').style.display = bn ? 'none' : '';
+          document.getElementById('cc-phone-help').textContent = bn ? MSG_MOBILE : MSG_PHONE;
+        }
+        form.addEventListener('change', refresh);
+        refresh();
+        form.addEventListener('submit', function (e) {
+          var any = Array.prototype.some.call(form.querySelectorAll('input[name^="qty["]'), function (i) { return parseInt(i.value || '0', 10) > 0; });
+          var m = digits(form.mobile.value), l = digits(form.landline.value), bn = method() === BOXNOW, err = '';
+          if (!any) err = 'Επιλέξτε τουλάχιστον ένα τεμάχιο για επιστροφή.';
+          else if (bn && !/^69\d{8}$/.test(m) && !/^69\d{8}$/.test(l)) err = MSG_MOBILE;
+          else if (!bn && !/^(69|2)\d{8,9}$/.test(m) && !/^(69|2)\d{8,9}$/.test(l)) err = MSG_PHONE;
+          else if (bn && !form.querySelector('input[name="locker_size"]:checked')) err = 'Επιλέξτε μέγεθος BOX NOW locker (Μικρό, Μεσαίο ή Μεγάλο).';
+          if (err) { e.preventDefault(); alert(err); return; }
+          document.getElementById('cc-submit').disabled = true;
+        });
+      })();
+      </script>
+      {% endif %}
+      {{ content_bottom }}</div>
+    {{ column_right }}</div>
+</div>
+{{ footer }}

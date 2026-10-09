@@ -1,0 +1,176 @@
+<script>
+(function () {
+  var DATA = {{ shipments|json_encode }};
+  var METHODS = {{ methods|json_encode }};
+  var TRACK = {{ tracking_url|json_encode }};
+  var URLS = {{ urls|json_encode }};
+  var MANIFEST = {{ url_manifest|json_encode }};
+  var RETURNS = {{ url_returns|json_encode }};
+  var POINTS = {{ points|json_encode }};
+  var DEFAULT_POINT = {{ default_point|json_encode }};
+  var SHORT = {ShipmentCreated: 'Δημιουργήθηκε', ShipmentPickedUp: 'Παραλήφθηκε', ShipmentInTransit: 'Σε μεταφορά', ShipmentArriveAtFinalStation: 'Στον σταθμό',
+    ShipmentOutForDelivery: 'Σε διανομή', ShipmentDelivered: 'Παραδόθηκε', ShipmentDeliveryFailed: 'Αποτυχία', ShipmentReturnedToSender: 'Επιστράφηκε', ShipmentCancelled: 'Ακυρωμένη'};
+  var PLACEHOLDER = '{' + '{tracking}}';
+  var EXPIRED = 'Η σύνδεση έληξε ή ο server απάντησε με σφάλμα. Κάνε ανανέωση της σελίδας (F5) και ξαναδοκίμασε.';
+  // The list is re-loaded by AJAX (filters, pages): keep the data of every load.
+  window.ccListData = window.ccListData || {};
+  Object.keys(DATA).forEach(function (k) { window.ccListData[k] = DATA[k]; });
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+  function selected() {
+    return Array.prototype.map.call(document.querySelectorAll('#order input[name="selected[]"]:checked'), function (c) { return c.value; });
+  }
+  function needSelection() {
+    var s = selected();
+    if (!s.length) { alert('Επίλεξε πρώτα παραγγελίες (τσέκαρε τα κουτάκια αριστερά).'); return null; }
+    return s;
+  }
+  /** One print button: normal and BOX NOW vouchers come out as separate PDFs, each with its own template. */
+  function bulkPrint() {
+    var s = needSelection(); if (!s) return;
+    var normal = [], boxnow = [];
+    s.forEach(function (id) {
+      var d = window.ccListData[id];
+      if (!d || !d.voucher_number || d.is_voided == 1) return;
+      (d.is_boxnow == 1 ? boxnow : normal).push(id);
+    });
+    if (!normal.length && !boxnow.length) { alert('Καμία από τις επιλεγμένες παραγγελίες δεν έχει ενεργό voucher.'); return; }
+    var first = normal.length ? ['print', normal] : ['printbn', boxnow];
+    window.open(URLS[first[0]] + '&order_ids=' + encodeURIComponent(first[1].join(',')), '_blank');
+    var note = document.getElementById('cc-print-note');
+    if (normal.length && boxnow.length && note) {
+      note.innerHTML = '';
+      note.appendChild(el('span', '', '🖨️ Άνοιξε το PDF με τα ' + normal.length + ' κανονικά vouchers. Τα BOX NOW έχουν δικό τους template: '));
+      var b = el('button', 'btn btn-warning btn-sm');
+      b.type = 'button';
+      b.textContent = '📦 Άνοιγμα PDF BOX NOW (' + boxnow.length + ')';
+      b.addEventListener('click', function () { window.open(URLS.printbn + '&order_ids=' + encodeURIComponent(boxnow.join(',')), '_blank'); note.style.display = 'none'; });
+      note.appendChild(b);
+      note.style.display = '';
+    }
+  }
+  function bulkPost(kind, question, btn) {
+    var s = needSelection(); if (!s) return;
+    var body = 'order_ids=' + encodeURIComponent(s.join(','));
+    var pp = document.getElementById('cc-bulk-point');
+    if (kind === 'create' && pp) {
+      body += '&pickup_point=' + encodeURIComponent(pp.value);
+      question = 'Δημιουργία voucher (Επόμενη Μέρα) από: ' + pp.options[pp.selectedIndex].text + ' για τις επιλεγμένες παραγγελίες; (Όσες επέλεξαν BOX NOW στο checkout βγαίνουν BOX NOW.)';
+    }
+    if (question && !confirm(question)) return;
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Παρακαλώ περιμένετε...';
+    fetch(URLS[kind], {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        btn.disabled = false; btn.innerHTML = orig;
+        var j = null; try { j = JSON.parse(t); } catch (e) {}
+        if (!j) { alert(EXPIRED); return; }
+        if (j.success) { alert(j.message || 'Ολοκληρώθηκε.'); location.reload(); } else { alert('Σφάλμα: ' + (j.error || 'Άγνωστο')); }
+      })
+      .catch(function (e) { btn.disabled = false; btn.innerHTML = orig; alert(String(e)); });
+  }
+  function addToolbarButtons() {
+    var bar = document.querySelector('#content .page-header .float-end');
+    if (!bar || document.getElementById('cc-manifest-btn')) return;
+    [[RETURNS, 'cc-returns-btn', 'fa-rotate-left', 'Επιστροφές', 'Επιστροφές — Courier Center'], [MANIFEST, 'cc-manifest-btn', 'fa-clipboard-list', 'Manifest', 'Manifest Παραλαβής — Courier Center']].forEach(function (b) {
+      var a = el('a', 'btn btn-info me-1');
+      a.id = b[1]; a.href = b[0]; a.title = b[4];
+      a.innerHTML = '<i class="fa-solid ' + b[2] + '"></i> ';
+      a.appendChild(document.createTextNode(b[3]));
+      bar.insertBefore(a, bar.firstChild);
+    });
+  }
+  function addBulkBar() {
+    var order = document.getElementById('order');
+    var card = order && order.closest ? order.closest('.card') : null;
+    var header = card ? card.querySelector('.card-header') : null;
+    if (!header || document.getElementById('cc-bulk-bar')) return;
+    var bar = el('div');
+    bar.id = 'cc-bulk-bar';
+    bar.style.cssText = 'margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;';
+    bar.appendChild(el('small', 'text-muted', 'Courier Center — επιλεγμένες:'));
+    if (POINTS.length) {
+      var sel = el('select', 'form-select form-select-sm');
+      sel.id = 'cc-bulk-point'; sel.style.width = 'auto'; sel.title = 'Σημείο αποστολής για τη μαζική δημιουργία';
+      POINTS.forEach(function (p) { var o = el('option', '', '📍 ' + p.label); o.value = p.code; if (p.code === DEFAULT_POINT) o.selected = true; sel.appendChild(o); });
+      bar.appendChild(sel);
+    }
+    [
+      ['create', 'btn-primary', 'fa-truck', 'Δημιουργία Vouchers', 'Δημιουργία voucher (Επόμενη Μέρα) για τις επιλεγμένες παραγγελίες; (Όσες επέλεξαν BOX NOW στο checkout βγαίνουν BOX NOW.)'],
+      ['print', 'btn-success', 'fa-print', 'Εκτύπωση Vouchers', null],
+      ['status', 'btn-info', 'fa-rotate', 'Ενημέρωση Status', null]
+    ].forEach(function (b) {
+      var btn = el('button', 'btn btn-sm ' + b[1]);
+      btn.type = 'button';
+      btn.innerHTML = '<i class="fa-solid ' + b[2] + '"></i> ';
+      btn.appendChild(document.createTextNode(b[3]));
+      btn.addEventListener('click', function () { if (b[0] === 'print') { bulkPrint(); } else { bulkPost(b[0], b[4], btn); } });
+      bar.appendChild(btn);
+    });
+    var note = el('div', 'alert alert-info');
+    note.id = 'cc-print-note';
+    note.style.cssText = 'display:none; margin:6px 0 0; padding:6px 10px; width:100%;';
+    bar.appendChild(note);
+    header.appendChild(bar);
+  }
+  function badge(text, color, bg, strike) {
+    var td = el('td', 'text-center d-none d-lg-table-cell cc-col');
+    td.style.whiteSpace = 'nowrap';
+    var s = el('span', '', text);
+    s.style.cssText = 'font-size:11px; padding:2px 6px; border-radius:3px;' + (color ? 'color:' + color + ';' : '') + (bg ? 'background:' + bg + ';' : '') + (strike ? 'text-decoration:line-through;' : '');
+    td.appendChild(s);
+    return td;
+  }
+  function addColumns() {
+    var table = document.querySelector('#order table');
+    if (!table) return;
+    var head = table.querySelector('thead tr');
+    if (head && !head.querySelector('.cc-col-head')) {
+      ['Μέθοδος', 'Τύπος', 'CC Voucher', 'CC Status'].forEach(function (t) {
+        var td = el('td', 'text-center d-none d-lg-table-cell cc-col-head');
+        td.appendChild(el('small', 'text-muted', t));
+        head.appendChild(td);
+      });
+    }
+    Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
+      if (tr.querySelector('.cc-col')) return;
+      var cb = tr.querySelector('input[name="selected[]"]');
+      if (!cb) return;
+      var id = String(cb.value), s = window.ccListData[id], m = METHODS[id];
+      var tdM = badge(m ? (m.name || '—') + (m.managed ? '' : ' ⚠️') : '—', m && !m.managed ? '#c0392b' : '#2c3338');
+      if (m && !m.managed) tdM.title = 'Δεν διαχειρίζεται από το plugin — δεν δημιουργείται voucher αυτόματα/μαζικά';
+      var tdV, tdS, tdT;
+      if (!s || !s.voucher_number) {
+        tdV = badge('—', '#ccc'); tdS = badge('—', '#ccc'); tdT = badge('—', '#ccc');
+      } else if (s.is_voided == 1) {
+        tdV = badge(s.voucher_number, '#aaa', '', true); tdS = badge('Ακυρωμένη', '#c0392b', '#fce8e6');
+        tdT = badge(s.is_boxnow == 1 ? '📦 BOX NOW' : '🚚 Κανονική', '#aaa');
+      } else {
+        tdT = s.is_boxnow == 1 ? badge('📦 BOX NOW', '#7a4b00', '#fff3cd') : badge('🚚 Κανονική', '#2c3338', '#f0f0f1');
+        tdV = el('td', 'text-center d-none d-lg-table-cell cc-col');
+        var a = el('a', '', s.voucher_number + ' ↗');
+        a.href = TRACK.replace(PLACEHOLDER, encodeURIComponent(s.tracking_number || s.voucher_number));
+        a.target = '_blank'; a.rel = 'noopener'; a.style.fontSize = '12px';
+        tdV.appendChild(a);
+        if (s.parcel_id) { var pid = el('div', '', 'Parcel ID: ' + s.parcel_id); pid.style.cssText = 'font-size:10px; color:#666;'; tdV.appendChild(pid); }
+        var code = s.status_code || '', color = '#2271b1', bg = '#f0f6fc';
+        if (['29', '87'].indexOf(code) !== -1) { color = '#46b450'; bg = '#e7f5e9'; }
+        else if (['28', '30'].indexOf(code) !== -1) { color = '#dba617'; bg = '#fff3cd'; }
+        else if (['25', '99', '14'].indexOf(code) !== -1) { color = '#dc3232'; bg = '#fce8e6'; }
+        tdS = badge(SHORT[s.status_desc] || s.status_desc || (code ? 'Κωδικός ' + code : '—'), color, bg);
+        if (s.status_desc) tdS.title = s.status_desc;
+      }
+      tr.appendChild(tdM); tr.appendChild(tdT); tr.appendChild(tdV); tr.appendChild(tdS);
+    });
+  }
+  function init() { addToolbarButtons(); addBulkBar(); addColumns(); }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+})();
+</script>

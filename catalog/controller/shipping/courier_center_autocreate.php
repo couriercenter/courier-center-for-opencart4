@@ -1,323 +1,49 @@
 <?php
 namespace Opencart\Catalog\Controller\Extension\Couriercenter\Shipping;
 
+require_once DIR_EXTENSION . 'couriercenter/library/oc4/loader.php';
+
+use Opencart\Extension\Couriercenter\Library\CCVoucherService;
+
 /**
- * Auto-create voucher on order-status change (port of the WooCommerce v1.3.3
- * feature "🤖 Αυτόματη Δημιουργία Voucher").
- *
- * Event: catalog/model/checkout/order/addHistory/after
- *   args = [order_id, order_status_id, comment, notify, override]
- *
- * When auto-create is enabled and an order moves into the configured trigger
- * status, a "next day" voucher is created automatically (with BOX NOW
- * auto-detection), unless an active voucher already exists. Everything is
- * wrapped in try/catch so a failure NEVER breaks the order-status change.
+ * Auto-create voucher on order-status change (event catalog/model/checkout/order/addHistory/after, sort 50).
+ * Same voucher code as the admin (shared CCVoucherService: lock, default pickup point, BOX NOW detection).
+ * A failure NEVER breaks the status change.
  */
 class CourierCenterAutocreate extends \Opencart\System\Engine\Controller {
+    use \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Controller;
 
+    /** $args = [order_id, order_status_id, comment, notify, override] */
     public function autoCreate(string &$route, array &$args, mixed &$output): void {
         try {
             if ((string)$this->config->get('shipping_courier_center_auto_create_enabled') !== '1') {
                 return;
             }
             $trigger = (int)$this->config->get('shipping_courier_center_auto_create_status_id');
-            if ($trigger <= 0) {
+            $order_id = (int)($args[0] ?? 0);
+            if ($trigger <= 0 || $order_id <= 0 || (int)($args[1] ?? 0) !== $trigger) {
                 return;
             }
-
-            $order_id   = (int)($args[0] ?? 0);
-            $new_status = (int)($args[1] ?? 0);
-            if ($order_id <= 0 || $new_status !== $trigger) {
+            $svc = $this->ccService();
+            if (CCVoucherService::isActive($svc->getShipment($order_id))) {
                 return;
             }
-
-            // Skip if an active (non-voided) voucher already exists.
-            $ex = $this->db->query(
-                "SELECT `voucher_number`, `is_voided` FROM `" . DB_PREFIX . "cc_shipments`
-                 WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1"
-            );
-            if ($ex->num_rows && $ex->row['voucher_number'] !== '' && (int)$ex->row['is_voided'] === 0) {
-                return; // already has an active voucher
-            }
-
             $this->load->model('checkout/order');
             $order = $this->model_checkout_order->getOrder($order_id);
             if (!$order) {
                 return;
             }
-
-            // Only auto-create for shipping methods the plugin manages (empty = all).
-            if (!$this->ccIsHandledOrder($order)) {
-                $this->ccNote($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: η μέθοδος αποστολής δεν διαχειρίζεται από το plugin.');
+            if (!$svc->isHandledOrder($order)) {
+                $svc->history()->add($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: η μέθοδος αποστολής δεν διαχειρίζεται από το plugin.');
                 return;
             }
-
-            $products = $this->ccEnrichProducts($this->model_checkout_order->getProducts($order_id));
-
-            // BOX NOW detection from the order's custom_field (set at checkout).
-            // The catalog model returns custom_field already decoded as an array;
-            // be tolerant of both array and JSON-string shapes.
-            $cf = $order['custom_field'] ?? [];
-            if (is_array($cf)) {
-                $custom = $cf;
-            } else {
-                $custom = json_decode((string)$cf, true) ?: [];
+            $res = $svc->createForOrder($order, array_merge(['service_type' => 'next_day', 'mode' => 'auto'], CCVoucherService::boxnowFromOrder($order)));
+            if (empty($res['success']) && ($res['stage'] ?? '') !== 'exists') {
+                $prefix = in_array($res['stage'] ?? '', ['api', 'busy'], true) ? '❌ Αυτόματη δημιουργία voucher απέτυχε: ' : '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: ';
+                $svc->history()->add($order_id, $prefix . ($res['error'] ?? 'Άγνωστο σφάλμα'));
             }
-            $locker_id     = (string)($custom['cc_locker_id']     ?? '');
-            $locker_code   = (string)($custom['cc_locker_code']   ?? '');
-            $locker_name   = (string)($custom['cc_locker_name']   ?? '');
-            $delivery_mode = (string)($custom['cc_delivery_mode'] ?? '');
-            $boxnow        = ($locker_id !== '' || $delivery_mode === 'auto');
-
-            require_once DIR_EXTENSION . 'couriercenter/library/CCOrderAdapter.php';
-            require_once DIR_EXTENSION . 'couriercenter/library/CCCityScope.php';
-            require_once DIR_EXTENSION . 'couriercenter/library/CCShipmentBuilder.php';
-            require_once DIR_EXTENSION . 'couriercenter/library/CCApi.php';
-
-            $adapter = new \Opencart\Extension\Couriercenter\Library\CCOrderAdapter($order, $products);
-
-            // BOX NOW does not support cash-on-delivery — skip with a note.
-            if ($boxnow && $adapter->is_cod()) {
-                $this->ccNote($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: το BOX NOW δεν υποστηρίζει αντικαταβολή (COD).');
-                return;
-            }
-
-            $builder = new \Opencart\Extension\Couriercenter\Library\CCShipmentBuilder($adapter, $this->buildSettings(), 1);
-
-            // On a validation problem, add an order note explaining why the voucher
-            // wasn't created (so the merchant sees it in the order timeline) — never
-            // surface an error during the status change itself.
-            $vs = $builder->validate_settings();
-            if ($vs !== true) {
-                $this->ccNote($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: ' . $vs);
-                return;
-            }
-            $vo = $builder->validate_order();
-            if ($vo !== true) {
-                $this->ccNote($order_id, '⚠️ Αυτόματη δημιουργία voucher παραλείφθηκε: ' . $vo);
-                return;
-            }
-
-            $payload = $builder->build_payload('next_day', $boxnow, 'none');
-            if ($boxnow && $locker_id !== '') {
-                $payload['LockerDeliveryInfo'] = ['Prefix' => 'ATH', 'Code' => $locker_id];
-            }
-
-            $result = $this->api()->create_shipment($payload);
-            if (isset($result['success']) && $result['success'] === false) {
-                $this->ccNote($order_id, '❌ Αυτόματη δημιουργία voucher απέτυχε: ' . ($result['error'] ?? 'άγνωστο σφάλμα'));
-                return;
-            }
-
-            $voucher  = $result['VoucherNumber']  ?? $result['AwbNumber']  ?? $result['ShipmentNumber'] ?? '';
-            $tracking = $result['TrackingNumber'] ?? $result['TrackingNo'] ?? ($result['TrackingNumbers'][0] ?? '');
-            if ($tracking === '') {
-                $tracking = $voucher;
-            }
-            if ($voucher === '') {
-                $this->ccNote($order_id, '❌ Αυτόματη δημιουργία voucher απέτυχε: το API δεν επέστρεψε αριθμό voucher.');
-                return;
-            }
-
-            // Assigned locker (BOX NOW) — best-effort.
-            if ($boxnow && $locker_code === '') {
-                $locker_code = (string)(
-                    $result['AssignedLockerCode']
-                    ?? $result['LockerCode']
-                    ?? $result['DestinationLockerCode']
-                    ?? $result['LockerDeliveryInfo']['Code']
-                    ?? ''
-                );
-            }
-
-            $this->saveShipment($order_id, [
-                'voucher_number'  => $voucher,
-                'tracking_number' => $tracking,
-                'service_type'    => 'next_day',
-                'is_boxnow'       => $boxnow ? 1 : 0,
-                'locker_id'       => $locker_id,
-                'locker_code'     => $locker_code,
-                'locker_name'     => $locker_name,
-            ]);
-
-            $this->ccNote($order_id, sprintf(
-                '🤖 Αυτόματη δημιουργία voucher (αλλαγή status): %s | Υπηρεσία: Επόμενη Μέρα%s',
-                $voucher,
-                $boxnow ? ' + BOX NOW' : ''
-            ));
         } catch (\Throwable $e) {
-            // Never break the status change — log silently.
-            error_log('CC auto-create voucher error: ' . $e->getMessage());
+            $this->log->write('Courier Center auto-create voucher: ' . $e->getMessage());
         }
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private function api(): \Opencart\Extension\Couriercenter\Library\CCApi {
-        return new \Opencart\Extension\Couriercenter\Library\CCApi(
-            (string)$this->config->get('shipping_courier_center_user_alias'),
-            (string)$this->config->get('shipping_courier_center_credential_value'),
-            (string)$this->config->get('shipping_courier_center_api_key'),
-            (string)$this->config->get('shipping_courier_center_billing_account')
-        );
-    }
-
-    private function buildSettings(): array {
-        $postcode = (string)$this->config->get('shipping_courier_center_shipper_postcode');
-        $station  = \Opencart\Extension\Couriercenter\Library\CCCityScope::get_station_for_postcode($postcode);
-        return [
-            'user_alias'       => (string)$this->config->get('shipping_courier_center_user_alias'),
-            'credential_value' => (string)$this->config->get('shipping_courier_center_credential_value'),
-            'api_key'          => (string)$this->config->get('shipping_courier_center_api_key'),
-            'billing_account'  => (string)$this->config->get('shipping_courier_center_billing_account'),
-            'shipper_name'     => (string)$this->config->get('shipping_courier_center_shipper_name'),
-            'shipper_address'  => (string)$this->config->get('shipping_courier_center_shipper_address'),
-            'shipper_postal'   => $postcode,
-            'shipper_city'     => (string)$this->config->get('shipping_courier_center_shipper_city'),
-            'shipper_phone'    => (string)$this->config->get('shipping_courier_center_shipper_phone'),
-            'shipper_station'  => $station,
-        ];
-    }
-
-    /** Insert/update the shipment row (catalog context — raw SQL). */
-    private function saveShipment(int $order_id, array $d): void {
-        $voucher  = $this->db->escape($d['voucher_number']  ?? '');
-        $tracking = $this->db->escape($d['tracking_number'] ?? '');
-        $service  = $this->db->escape($d['service_type']    ?? 'next_day');
-        $boxnow   = (int)($d['is_boxnow'] ?? 0);
-        $lid      = $this->db->escape($d['locker_id']   ?? '');
-        $lcode    = $this->db->escape($d['locker_code'] ?? '');
-        $lname    = $this->db->escape($d['locker_name'] ?? '');
-
-        $exists = $this->db->query("SELECT `order_id` FROM `" . DB_PREFIX . "cc_shipments` WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1");
-
-        if ($exists->num_rows) {
-            // A new voucher is a new shipment: drop the void/status/date of the old one.
-            $this->db->query(
-                "UPDATE `" . DB_PREFIX . "cc_shipments` SET
-                    `is_voided`         = 0,
-                    `is_final`          = 0,
-                    `status_code`       = '',
-                    `status_desc`       = '',
-                    `last_checked_at`   = NULL,
-                    `status_updated_at` = NULL,
-                    `created_at`        = NOW(),
-                    `voucher_number`  = '$voucher',
-                    `tracking_number` = '$tracking',
-                    `service_type`    = '$service',
-                    `return_option`   = 'none',
-                    `return_awb`      = '',
-                    `is_boxnow`       = '$boxnow',
-                    `locker_id`       = '$lid',
-                    `locker_code`     = '$lcode',
-                    `locker_name`     = '$lname'
-                 WHERE `order_id` = '" . (int)$order_id . "'"
-            );
-        } else {
-            $this->db->query(
-                "INSERT INTO `" . DB_PREFIX . "cc_shipments`
-                 (`order_id`, `voucher_number`, `tracking_number`, `service_type`,
-                  `return_option`, `return_awb`, `is_boxnow`, `locker_id`, `locker_code`, `locker_name`)
-                 VALUES ('" . (int)$order_id . "', '$voucher', '$tracking', '$service',
-                         'none', '', '$boxnow', '$lid', '$lcode', '$lname')"
-            );
-        }
-    }
-
-    /**
-     * Does the plugin manage this order's shipping method? Mirrors the admin-side
-     * check. If no methods are configured (empty option) it manages ALL orders.
-     */
-    private function ccIsHandledOrder(array $order): bool {
-        $handled = $this->config->get('shipping_courier_center_handled_shipping_methods');
-        $handled = is_array($handled) ? array_values(array_filter(array_map('strval', $handled))) : [];
-        if (empty($handled)) {
-            return true;
-        }
-        $m = $order['shipping_method'] ?? '';
-        if (is_string($m)) {
-            $m = json_decode($m, true);
-        }
-        $full = is_array($m) ? (string)($m['code'] ?? '') : '';
-        $code = $full !== '' ? explode('.', $full)[0] : '';
-        return in_array($code, $handled, true);
-    }
-
-    /**
-     * Enrich order products with real weight/dimensions from the product table,
-     * converting weight to kg and dimensions to cm from the product's weight/length
-     * class (a store measuring in grams/inches would otherwise send raw values).
-     */
-    private function ccEnrichProducts(array $products): array {
-        foreach ($products as &$p) {
-            $pid = (int)($p['product_id'] ?? 0);
-            if ($pid <= 0) continue;
-            $q = $this->db->query(
-                "SELECT `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id` FROM `" . DB_PREFIX . "product`
-                 WHERE `product_id` = '" . $pid . "' LIMIT 1"
-            );
-            if ($q->num_rows) {
-                $wcid = (int)$q->row['weight_class_id'];
-                $lcid = (int)$q->row['length_class_id'];
-                $p['weight'] = $this->ccConvertClass((float)$q->row['weight'], $wcid, 'weight_class', 'kg');
-                $p['length'] = $this->ccConvertClass((float)$q->row['length'], $lcid, 'length_class', 'cm');
-                $p['width']  = $this->ccConvertClass((float)$q->row['width'],  $lcid, 'length_class', 'cm');
-                $p['height'] = $this->ccConvertClass((float)$q->row['height'], $lcid, 'length_class', 'cm');
-            }
-        }
-        unset($p);
-        return $products;
-    }
-
-    /**
-     * Convert a value stored in an OpenCart weight/length class to the unit the
-     * Courier Center API expects (kg / cm). Falls back to the raw value if the
-     * target or source class cannot be resolved.
-     */
-    private function ccConvertClass(float $value, int $from_class_id, string $table, string $unit): float {
-        if ($value <= 0 || $from_class_id <= 0) {
-            return $value;
-        }
-        static $target_cache = [];
-        $key = $table . '|' . $unit;
-        if (!array_key_exists($key, $target_cache)) {
-            $r = $this->db->query(
-                "SELECT c.`" . $table . "_id` AS id, c.`value` AS val
-                   FROM `" . DB_PREFIX . $table . "` c
-                   JOIN `" . DB_PREFIX . $table . "_description` d ON c.`" . $table . "_id` = d.`" . $table . "_id`
-                  WHERE LOWER(TRIM(d.`unit`)) = '" . $this->db->escape($unit) . "' LIMIT 1"
-            );
-            $target_cache[$key] = $r->num_rows ? ['id' => (int)$r->row['id'], 'val' => (float)$r->row['val']] : null;
-        }
-        $target = $target_cache[$key];
-        if (!$target || $from_class_id === $target['id']) {
-            return $value;
-        }
-        $f = $this->db->query("SELECT `value` FROM `" . DB_PREFIX . $table . "` WHERE `" . $table . "_id` = '" . (int)$from_class_id . "' LIMIT 1");
-        $from_val = $f->num_rows ? (float)$f->row['value'] : 0.0;
-        if ($from_val <= 0) {
-            return $value;
-        }
-        return $value * ($target['val'] / $from_val);
-    }
-
-    /** Add an order-history comment (raw SQL — never re-triggers addHistory). */
-    private function ccNote(int $order_id, string $comment): void {
-        $cur = $this->db->query("SELECT `order_status_id` FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . (int)$order_id . "' LIMIT 1");
-        if (!$cur->num_rows) {
-            return;
-        }
-        $status_id = (int)$cur->row['order_status_id'];
-        if ($status_id <= 0) {
-            return;
-        }
-        $this->db->query(
-            "INSERT INTO `" . DB_PREFIX . "order_history` SET
-                `order_id`        = '" . (int)$order_id . "',
-                `order_status_id` = '" . (int)$status_id . "',
-                `notify`          = '0',
-                `comment`         = '" . $this->db->escape($comment) . "',
-                `date_added`      = NOW()"
-        );
     }
 }

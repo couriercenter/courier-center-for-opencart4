@@ -1,6 +1,8 @@
 <?php
 namespace Opencart\Admin\Controller\Extension\Couriercenter\Shipping;
 
+require_once DIR_EXTENSION . 'couriercenter/library/oc4/loader.php';
+
 /**
  * Bug Report page — lets the merchant send a technical problem report to the
  * Courier Center dashboard (same endpoint as the WooCommerce plugin).
@@ -8,7 +10,6 @@ namespace Opencart\Admin\Controller\Extension\Couriercenter\Shipping;
 class CourierCenterBug extends \Opencart\System\Engine\Controller {
 
     const DASHBOARD_URL  = 'https://courier-center-dashboard.onrender.com/api/report';
-    const PLUGIN_VERSION = '1.2.7';
 
     public function index(): void {
         $this->document->setTitle('Αναφορά Προβλήματος — Courier Center');
@@ -16,7 +17,7 @@ class CourierCenterBug extends \Opencart\System\Engine\Controller {
         $token = $this->session->data['user_token'];
 
         $data['site_url']         = (string)($this->config->get('config_url') ?: (defined('HTTP_CATALOG') ? HTTP_CATALOG : ''));
-        $data['plugin_version']   = self::PLUGIN_VERSION;
+        $data['plugin_version']   = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::version();
         $data['opencart_version'] = defined('VERSION') ? VERSION : 'N/A';
         $data['php_version']      = PHP_VERSION;
 
@@ -70,7 +71,7 @@ class CourierCenterBug extends \Opencart\System\Engine\Controller {
             'site_url'         => (string)($this->config->get('config_url') ?: (defined('HTTP_CATALOG') ? HTTP_CATALOG : '')),
             'platform'         => 'OpenCart',
             'opencart_version' => defined('VERSION') ? VERSION : 'N/A',
-            'plugin_version'   => self::PLUGIN_VERSION,
+            'plugin_version'   => \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::version(),
             'php_version'      => PHP_VERSION,
             'title'            => $title,
             'description'      => $description,

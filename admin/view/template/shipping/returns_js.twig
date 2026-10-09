@@ -1,0 +1,39 @@
+<script>
+(function () {
+  if (window.ccReturnsBound) return;
+  window.ccReturnsBound = true;
+  var URLS = {{ urls|json_encode }};
+  var ASK = {
+    approve: 'Έγκριση του αιτήματος και δημιουργία της αποστολής επιστροφής στην Courier Center;',
+    reject: 'Απόρριψη του αιτήματος επιστροφής; Ο πελάτης θα ενημερωθεί με email.',
+    create: 'Δημιουργία (ή νέα προσπάθεια) της αποστολής επιστροφής;'
+  };
+  var EXPIRED = 'Η σύνδεση έληξε ή ο server απάντησε με σφάλμα. Κάνε ανανέωση της σελίδας (F5) και ξαναδοκίμασε.';
+  function show(type, text) {
+    var box = document.getElementById('cc-ret-msg');
+    if (!box) { alert(text); return; }
+    box.innerHTML = '';
+    var d = document.createElement('div'); d.className = 'alert alert-' + type; d.textContent = text; box.appendChild(d);
+    box.scrollIntoView({block: 'nearest'});
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-cc-ret]') : null;
+    if (!b) return;
+    var action = b.getAttribute('data-cc-ret'), row = b.closest('[data-id]');
+    if (!row || !URLS[action]) return;
+    if (ASK[action] && !confirm(ASK[action])) return;
+    var orig = b.innerHTML;
+    b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    fetch(URLS[action], {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'id=' + encodeURIComponent(row.getAttribute('data-id'))})
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (err) {}
+        b.disabled = false; b.innerHTML = orig;
+        if (!j) { show('danger', EXPIRED); return; }
+        if (j.success) { window.location.hash = 'cc-tab'; window.location.reload(); return; }
+        show('danger', 'Επιστροφή #' + row.getAttribute('data-id') + ': ' + (j.error || 'Σφάλμα') + (j.status_label ? ' (κατάσταση: ' + j.status_label + ')' : ''));
+      })
+      .catch(function (err) { b.disabled = false; b.innerHTML = orig; show('danger', String(err)); });
+  });
+})();
+</script>

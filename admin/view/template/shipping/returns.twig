@@ -1,0 +1,77 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end"><a href="{{ url_settings|e }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> Ρυθμίσεις επιστροφών</a></div>
+      <h1><i class="fa-solid fa-rotate-left"></i> Επιστροφές Courier Center</h1>
+      <ol class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}<li class="breadcrumb-item"><a href="{{ breadcrumb.href|e }}">{{ breadcrumb.text|e }}</a></li>{% endfor %}
+      </ol>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if not enabled %}
+    <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Οι επιστροφές είναι απενεργοποιημένες: οι πελάτες δεν βλέπουν το «Αίτημα επιστροφής». Ενεργοποίησέ τες στις <a href="{{ url_settings|e }}">ρυθμίσεις</a>.</div>
+    {% endif %}
+    <div id="cc-ret-msg"></div>
+    <div class="card">
+      <div class="card-header"><i class="fa-solid fa-list"></i> Αιτήματα επιστροφής ({{ total|e }})</div>
+      <div class="card-body">
+        <form method="get" action="index.php" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+          <input type="hidden" name="route" value="{{ route|e }}">
+          <input type="hidden" name="user_token" value="{{ user_token|e }}">
+          <select name="filter_status" class="form-select form-select-sm" style="width:auto;">
+            <option value="">Όλες οι καταστάσεις</option>
+            {% for st in statuses %}<option value="{{ st.code|e }}"{% if st.code == filter_status %} selected{% endif %}>{{ st.label|e }} ({{ st.count|e }})</option>{% endfor %}
+          </select>
+          <select name="filter_method" class="form-select form-select-sm" style="width:auto;">
+            <option value="">Όλες οι μέθοδοι</option>
+            {% for code, label in methods %}<option value="{{ code|e }}"{% if code == filter_method %} selected{% endif %}>{{ label|e }}</option>{% endfor %}
+          </select>
+          <input type="text" name="filter_search" value="{{ filter_search|e }}" class="form-control form-control-sm" style="width:auto;" placeholder="Παραγγελία ή AWB">
+          <button type="submit" class="btn btn-light btn-sm"><i class="fa-solid fa-filter"></i> Φίλτρο</button>
+        </form>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead><tr><th>#</th><th>Παραγγελία</th><th>Πελάτης</th><th>Μέθοδος</th><th>Είδη</th><th>Κατάσταση</th><th>Αρχικό AWB</th><th>Αποστολή επιστροφής</th><th>Κωδικοί</th><th>Ημερομηνία</th><th></th></tr></thead>
+            <tbody>
+              {% for r in rows %}
+              <tr data-id="{{ r.id|e }}">
+                <td>{{ r.id|e }}</td>
+                <td><a href="{{ r.order_url|e }}">#{{ r.order_id|e }}</a></td>
+                <td>{{ r.customer|e }}</td>
+                <td>{{ r.method_label|e }}{% if r.locker_label %}<br><small>Θυρίδα: {{ r.locker_label|e }}</small>{% endif %}</td>
+                <td><small>{{ r.items|e }}</small>{% if r.reason %}<br><small class="text-muted">«{{ r.reason|e }}»</small>{% endif %}</td>
+                <td><strong>{{ r.status_label|e }}</strong>{% if r.last_error %}<br><small class="text-danger">{{ r.last_error|e }}</small>{% endif %}</td>
+                <td>{{ r.original_awb|e }}</td>
+                <td>{% if r.return_awb %}{{ r.return_awb|e }}{% if r.rsn %}<br><small>BOX NOW: <strong>{{ r.rsn|e }}</strong></small>{% endif %}{% if r.tracking %}<br><small>📍 {{ r.tracking|e }}</small>{% endif %}{% else %}—{% endif %}</td>
+                <td><small>{{ r.accounts|e }}</small></td>
+                <td><small>{{ r.created_at|e }}</small></td>
+                <td class="text-nowrap">
+                  {% if can_modify %}
+                  {% if r.can_approve %}<button type="button" class="btn btn-success btn-sm" data-cc-ret="approve" title="Έγκριση και δημιουργία αποστολής"><i class="fa-solid fa-check"></i> Έγκριση</button>{% endif %}
+                  {% if r.can_create %}<button type="button" class="btn btn-primary btn-sm" data-cc-ret="create"><i class="fa-solid fa-truck"></i> Δημιουργία αποστολής</button>{% endif %}
+                  {% if r.can_verify %}<button type="button" class="btn btn-warning btn-sm" data-cc-ret="verify"><i class="fa-solid fa-magnifying-glass"></i> Έλεγχος ύπαρξης αποστολής</button>{% endif %}
+                  {% if r.can_track %}<button type="button" class="btn btn-info btn-sm" data-cc-ret="track" title="Ανανέωση tracking"><i class="fa-solid fa-rotate"></i></button>{% endif %}
+                  {% if r.can_reject %}<button type="button" class="btn btn-danger btn-sm" data-cc-ret="reject"><i class="fa-solid fa-xmark"></i> Απόρριψη</button>{% endif %}
+                  {% endif %}
+                  {% if r.print_url %}<a href="{{ r.print_url|e }}" target="_blank" class="btn btn-light btn-sm" title="Voucher επιστροφής (PDF)"><i class="fa-solid fa-print"></i></a>{% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="11" class="text-center text-muted">Δεν υπάρχουν αιτήματα επιστροφής.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if pagination %}
+        <ul class="pagination">
+          {% for p in pagination %}<li class="page-item{% if p.active %} active{% endif %}"><a class="page-link" href="{{ p.href|e }}">{{ p.page|e }}</a></li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{{ returns_js }}
+{{ footer }}

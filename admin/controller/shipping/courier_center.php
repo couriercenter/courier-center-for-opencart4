@@ -78,7 +78,8 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'status', 'user_alias', 'billing_account',
             'shipper_name', 'shipper_address', 'shipper_postcode', 'shipper_city', 'shipper_phone',
             'tracking_url', 'email_tracking_enabled',
-            'boxnow_enabled', 'boxnow_default_selected', 'print_template', 'print_template_boxnow', 'auto_complete_status_id',
+            'boxnow_enabled', 'boxnow_default_selected', 'print_template', 'print_template_boxnow', 'auto_complete_status_id', 'auto_complete_notify',
+            'street_number_field', 'pseudo_cron',
             'auto_create_enabled', 'auto_create_status_id',
             'cost', 'cod_fee', 'geo_zone_id', 'tax_class_id', 'sort_order',
         ];
@@ -94,10 +95,20 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             $data['tracking_url'] = self::DEFAULT_TRACKING_URL;
         }
         $defaults = ['email_tracking_enabled' => '1', 'print_template' => 'pdf', 'print_template_boxnow' => 'singlepdf_100x150_4up',
-            'auto_complete_status_id' => '0', 'auto_create_enabled' => '0', 'auto_create_status_id' => '0', 'cost' => '0', 'cod_fee' => '0', 'sort_order' => '0'];
+            'auto_complete_notify' => '1', 'pseudo_cron' => '1', 'auto_create_enabled' => '0', 'auto_create_status_id' => '0', 'cost' => '0', 'cod_fee' => '0', 'sort_order' => '0'];
         foreach ($defaults as $k => $v) {
             if ($data[$k] === '') {
                 $data[$k] = $v;
+            }
+        }
+
+        // auto_complete_status_id: '' = automatic (the shop's first complete status), '0' = off.
+        // Address custom fields that can hold a separate street number (text fields)
+        $this->load->model('customer/custom_field');
+        $data['address_custom_fields'] = [];
+        foreach ($this->model_customer_custom_field->getCustomFields([]) as $cf) {
+            if (($cf['location'] ?? '') === 'address' && in_array(($cf['type'] ?? ''), ['text', 'textarea'], true)) {
+                $data['address_custom_fields'][] = ['id' => (string)$cf['custom_field_id'], 'name' => $this->ccText($cf['name'])];
             }
         }
 
@@ -130,6 +141,9 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'method_pickup'        => in_array(CCReturnsRules::METHOD_PICKUP, $rs->enabledMethods(), true),
             'method_boxnow'        => in_array(CCReturnsRules::METHOD_BOXNOW, $rs->enabledMethods(), true),
             'admin_notify'         => $rs->adminNotify(),
+            'email_received'       => $rs->customerEmailEnabled('received'),
+            'email_created'        => $rs->customerEmailEnabled('created'),
+            'email_rejected'       => $rs->customerEmailEnabled('rejected'),
             'admin_emails'         => $this->ccText($this->config->get($this->prefix . 'returns_admin_emails')),
             'weight'               => $rs->weight(),
             'accounts'             => $rs->accountRows(),
@@ -407,7 +421,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             return;
         }
         $svc = $this->ccService();
-        $tracker = $svc->tracker();
+        $tracker = $this->ccTracker();
         $updated = $skipped = $recent = $failed = 0;
         $errors = [];
         foreach ($ids as $order_id) {
@@ -474,6 +488,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         if ($shipment) {
             $this->db->query("UPDATE `" . DB_PREFIX . "cc_shipments` SET `is_boxnow` = 0, `locker_id` = '', `locker_code` = '', `locker_name` = '', `boxnow_parcel_id` = '' WHERE `order_id` = '" . $order_id . "'");
         }
+        $this->ccService()->history()->add($order_id, '↩️ Η επιλογή BOX NOW αφαιρέθηκε από τον merchant. Η παραγγελία θα αποσταλεί ως κανονική αποστολή.');
         $this->ccJson(['success' => true]);
     }
 
@@ -493,7 +508,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             $this->ccJson(['success' => false, 'error' => 'Η αποστολή ενημερώθηκε πρόσφατα. Ξαναδοκίμασε σε ' . $mins . ' λεπτά.']);
             return;
         }
-        $r = $svc->tracker()->refresh($shipment, '');
+        $r = $this->ccTracker()->refresh($shipment, '');
         $this->ccJson($r['success'] ? ['success' => true, 'code' => $r['code'], 'desc' => $r['desc']] : ['success' => false, 'error' => $r['error']]);
     }
 
@@ -627,6 +642,11 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
         $codes = [$main];
         foreach ($clean['rows'] as $row) {
             $codes[] = $row['code'];
+        }
+        $handled = CCVoucherService::sanitizeHandled($post[$p . 'handled_shipping_methods'] ?? [], $this->config->get($p . 'handled_shipping_methods'));
+        $post[$p . 'handled_shipping_methods'] = $handled['codes'];
+        if ($handled['warning'] !== '') {
+            $warnings[] = $handled['warning'];
         }
         $default = trim($this->ccText($post[$p . 'default_pickup_point'] ?? ''));
         $post[$p . 'default_pickup_point'] = in_array($default, $codes, true) ? $default : '';

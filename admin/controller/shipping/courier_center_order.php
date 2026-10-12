@@ -63,10 +63,10 @@ class CourierCenterOrder extends \Opencart\System\Engine\Controller {
             $order = $this->model_sale_order->getOrder($order_id);
             $consignee = '';
             if ($order) {
+                // The address exactly as the voucher will carry it (with the separate street number, if configured).
                 $a = new CCOrderAdapter($order);
-                $consignee = trim($a->get_billing_first_name() . ' ' . $a->get_billing_last_name()) . ', '
-                    . trim($a->get_billing_address_1() . ' ' . $a->get_billing_address_2()) . ', '
-                    . $a->get_billing_postcode() . ' ' . $a->get_billing_city() . ' · ' . $a->get_billing_phone();
+                $b = new \Opencart\Extension\Couriercenter\Library\CCShipmentBuilder($a, $this->ccService()->builderSettings());
+                $consignee = trim($a->get_billing_first_name() . ' ' . $a->get_billing_last_name()) . ', ' . $b->get_consignee_address_preview() . ' · ' . $a->get_billing_phone();
             }
 
             $returns = [];

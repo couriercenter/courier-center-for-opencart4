@@ -19,10 +19,18 @@ class CourierCenterCron extends \Opencart\System\Engine\Controller {
             return;
         }
         @set_time_limit(0);
+        ignore_user_abort(true); // the pseudo-cron request does not wait for the answer
         $site = (string)$this->config->get('config_url');
         $r = CCOc4Cron::run($this->db, DB_PREFIX, $this->config, DIR_CACHE, function ($event, $id) {
             $this->ccSendReturnMail((string)$event, (int)$id);
+        }, function ($order_id) {
+            $this->ccSendCompletedMail((int)$order_id);
         });
         $this->response->setOutput($r['message'] . "\n" . implode("\n", $r['lines']) . "\n");
+    }
+
+    /** Event catalog/view/common/footer/after: the pseudo-cron (see ccPseudoCronTick). */
+    public function tick(string &$route, array &$args, mixed &$output): void {
+        $this->ccPseudoCronTick();
     }
 }

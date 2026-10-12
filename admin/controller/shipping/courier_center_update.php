@@ -14,6 +14,8 @@ require_once DIR_EXTENSION . 'couriercenter/library/oc4/loader.php';
  *             new files over extension/couriercenter/, and rolls back on error.
  */
 class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
+    use \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Controller;
+
 
     // Repo that hosts the releases for the auto-updater.
     // Empty string = updater disabled (no checks happen).
@@ -143,6 +145,7 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
      * it never hits the network on the hot path more than twice a day.
      */
     public function notice(string &$route, array &$args, mixed &$output): void {
+        $this->ccPseudoCronTick();
         // Files updated (one-click update or by hand): tables, events and permissions follow, once.
         try {
             \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::repairIfUpdated($this->db, DB_PREFIX);

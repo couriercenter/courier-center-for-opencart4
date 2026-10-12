@@ -55,6 +55,13 @@
       note.style.display = '';
     }
   }
+  /** Only the BOX NOW vouchers of the selection (the second PDF template), like the «Μαζική Εκτύπωση BOX NOW» action of WooCommerce. */
+  function bulkPrintBoxnowOnly() {
+    var s = needSelection(); if (!s) return;
+    var ids = s.filter(function (id) { var d = DATA[id]; return d && d.voucher_number && d.is_voided != 1 && d.is_boxnow == 1; });
+    if (!ids.length) { alert('Καμία από τις επιλεγμένες παραγγελίες δεν έχει ενεργό BOX NOW voucher.'); return; }
+    window.open(URLS.printbn + '&order_ids=' + encodeURIComponent(ids.join(',')), '_blank');
+  }
   function bulkPost(kind, question, btn) {
     var s = needSelection(); if (!s) return;
     var body = 'order_ids=' + encodeURIComponent(s.join(','));
@@ -106,13 +113,14 @@
     [
       ['create', 'btn-primary', 'fa-truck', 'Δημιουργία Vouchers', 'Δημιουργία voucher (Επόμενη Μέρα) για τις επιλεγμένες παραγγελίες; (Όσες επέλεξαν BOX NOW στο checkout βγαίνουν BOX NOW.)'],
       ['print', 'btn-success', 'fa-print', 'Εκτύπωση Vouchers', null],
+      ['printbn', 'btn-warning', 'fa-print', 'Εκτύπωση BOX NOW', null],
       ['status', 'btn-info', 'fa-rotate', 'Ενημέρωση Status', null]
     ].forEach(function (b) {
       var btn = el('button', 'btn btn-sm ' + b[1]);
       btn.type = 'button';
       btn.innerHTML = '<i class="fa-solid ' + b[2] + '"></i> ';
       btn.appendChild(document.createTextNode(b[3]));
-      btn.addEventListener('click', function () { if (b[0] === 'print') { bulkPrint(); } else { bulkPost(b[0], b[4], btn); } });
+      btn.addEventListener('click', function () { if (b[0] === 'print') { bulkPrint(); } else if (b[0] === 'printbn') { bulkPrintBoxnowOnly(); } else { bulkPost(b[0], b[4], btn); } });
       bar.appendChild(btn);
     });
     var note = el('div', 'alert alert-info');
@@ -145,8 +153,8 @@
       var cb = tr.querySelector('input[name="selected[]"]');
       if (!cb) return;
       var id = String(cb.value), s = window.ccListData[id], m = METHODS[id];
-      var tdM = badge(m ? (m.name || '—') + (m.managed ? '' : ' ⚠️') : '—', m && !m.managed ? '#c0392b' : '#2c3338');
-      if (m && !m.managed) tdM.title = 'Δεν διαχειρίζεται από το plugin — δεν δημιουργείται voucher αυτόματα/μαζικά';
+      var tdM = badge(m ? (m.name || '—') : '—', m ? '#fff' : '#ccc', m ? (m.managed ? '#5DC122' : '#999') : '');
+      if (m) tdM.title = m.managed ? 'Διαχειρίζεται από το plugin' : 'Δεν διαχειρίζεται από το plugin — δεν δημιουργείται voucher αυτόματα/μαζικά';
       var tdV, tdS, tdT;
       if (!s || !s.voucher_number) {
         tdV = badge('—', '#ccc'); tdS = badge('—', '#ccc'); tdT = badge('—', '#ccc');
@@ -161,12 +169,16 @@
         a.target = '_blank'; a.rel = 'noopener'; a.style.fontSize = '12px';
         tdV.appendChild(a);
         if (s.parcel_id) { var pid = el('div', '', 'Parcel ID: ' + s.parcel_id); pid.style.cssText = 'font-size:10px; color:#666;'; tdV.appendChild(pid); }
-        var code = s.status_code || '', color = '#2271b1', bg = '#f0f6fc';
-        if (['29', '87'].indexOf(code) !== -1) { color = '#46b450'; bg = '#e7f5e9'; }
-        else if (['28', '30'].indexOf(code) !== -1) { color = '#dba617'; bg = '#fff3cd'; }
-        else if (['25', '99', '14'].indexOf(code) !== -1) { color = '#dc3232'; bg = '#fce8e6'; }
-        tdS = badge(SHORT[s.status_desc] || s.status_desc || (code ? 'Κωδικός ' + code : '—'), color, bg);
-        if (s.status_desc) tdS.title = s.status_desc;
+        var code = s.status_code || '', color = '#1d4ed8', bg = '#e7f0ff';
+        if (['29', '87'].indexOf(code) !== -1) { color = '#1e6823'; bg = '#e7f5e9'; }
+        else if (['28', '30'].indexOf(code) !== -1) { color = '#856404'; bg = '#fff3cd'; }
+        else if (['25', '99', '14', '95'].indexOf(code) !== -1) { color = '#8b0000'; bg = '#fce8e6'; }
+        if (s.status_desc && s.status_desc !== 'None') {
+          tdS = badge(SHORT[s.status_desc] || s.status_desc, color, bg);
+          tdS.title = 'Code: ' + code + (s.status_desc ? ' — ' + s.status_desc : '');
+        } else {
+          tdS = badge('Νέα', '#2271b1', '#f0f6fc');
+        }
       }
       var tdR = RETURNS[id] ? badge('↩️ ' + RETURNS[id], '#7a4b00', '#fff8e5') : badge('—', '#ccc');
       tr.appendChild(tdM); tr.appendChild(tdT); tr.appendChild(tdV); tr.appendChild(tdS); tr.appendChild(tdR);

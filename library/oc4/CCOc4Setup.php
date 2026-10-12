@@ -27,6 +27,8 @@ class CCOc4Setup {
             'courier_center_boxnow_widget' => ['catalog/view/checkout/checkout/after', $b . 'courier_center_boxnow.widget', 0, 'Courier Center — BOX NOW widget στο checkout'],
             'courier_center_boxnow_order'  => ['catalog/model/checkout/order/addOrder/after', $b . 'courier_center_boxnow.saveToOrder', 0, 'Courier Center — αποθήκευση BOX NOW locker στην παραγγελία'],
             'courier_center_returns_order' => ['catalog/view/account/order_info/after', $b . 'courier_center_returns.orderInfo', 0, 'Courier Center — επιστροφές στη σελίδα παραγγελίας του πελάτη'],
+            'courier_center_returns_orders' => ['catalog/view/account/order_list/after', $b . 'courier_center_returns.orderList', 0, 'Courier Center — κουμπί «Αίτημα Επιστροφής» στη λίστα παραγγελιών του πελάτη'],
+            'courier_center_pseudo_cron'   => ['catalog/view/common/footer/after', $b . 'courier_center_cron.tick', 5, 'Courier Center — αυτόματη ενημέρωση status χωρίς cron job'],
             'courier_center_returns_note_dash' => ['admin/view/common/dashboard/after', $b . 'courier_center_returns.notice', 0, 'Courier Center — ειδοποίηση αιτημάτων επιστροφής (Πίνακας ελέγχου)'],
             'courier_center_returns_note_list' => ['admin/view/sale/order/after', $b . 'courier_center_returns.notice', 0, 'Courier Center — ειδοποίηση αιτημάτων επιστροφής (Παραγγελίες)'],
             'courier_center_returns_note_info' => ['admin/view/sale/order_info/after', $b . 'courier_center_returns.notice', 1, 'Courier Center — ειδοποίηση αιτημάτων επιστροφής (Παραγγελία)'],

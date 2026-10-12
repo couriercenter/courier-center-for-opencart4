@@ -247,13 +247,27 @@ class CourierCenterReturns extends \Opencart\System\Engine\Controller {
     /** Event admin/view/common/column_left/before: «Επιστροφές Courier Center» under Sales. */
     public function menu(string &$route, array &$args): void {
         try {
-            if (!isset($args['menus']) || !is_array($args['menus']) || !$this->user->hasPermission('access', self::ROUTE)
-                || (string)$this->config->get('shipping_courier_center_returns_enabled') !== '1') {
+            if (!isset($args['menus']) || !is_array($args['menus']) || !$this->user->hasPermission('access', CCOc4Setup::BASE_ROUTE)) {
                 return;
             }
             $this->ccRememberAdminUrl();
             $n = $this->pendingCount();
-            $entry = ['name' => 'Επιστροφές Courier Center' . ($n ? ' (' . $n . ')' : ''), 'href' => $this->ccLink(self::ROUTE), 'children' => []];
+            // Sales → Courier Center → Manifest / Returns (with the count) / Settings / Guide / Bug report:
+            // the submenu of the WooCommerce plugin (each entry only if the user may open it).
+            $items = [
+                ['Manifest Παραλαβής', CCOc4Setup::BASE_ROUTE . '_manifest'],
+                ['Επιστροφές' . ($n ? ' (' . $n . ')' : ''), self::ROUTE],
+                ['Ρυθμίσεις', CCOc4Setup::BASE_ROUTE],
+                ['Οδηγίες', CCOc4Setup::BASE_ROUTE . '_docs'],
+                ['Αναφορά Προβλήματος', CCOc4Setup::BASE_ROUTE . '_bug'],
+            ];
+            $children = [];
+            foreach ($items as [$item_name, $item_route]) { // (not $route: it is the event's by-reference route)
+                if ($this->user->hasPermission('access', $item_route)) {
+                    $children[] = ['name' => $item_name, 'href' => $this->ccLink($item_route), 'children' => []];
+                }
+            }
+            $entry = ['name' => 'Courier Center' . ($n ? ' (' . $n . ')' : ''), 'href' => '', 'children' => $children];
             foreach ($args['menus'] as $i => $m) {
                 if (($m['id'] ?? '') === 'menu-sale') {
                     $args['menus'][$i]['children'][] = $entry;

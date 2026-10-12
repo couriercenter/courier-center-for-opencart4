@@ -23,7 +23,30 @@ require_once __DIR__ . '/library/oc4/loader.php';
 
 $db = new \Opencart\System\Library\DB(DB_DRIVER, DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, (int)DB_PORT);
 $config = new \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4ConfigSnapshot($db, DB_PREFIX);
-$result = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Cron::run($db, DB_PREFIX, $config, DIR_CACHE);
+// Emails (returns, "order completed") go out with the shop's own mail settings, like in the web endpoint.
+$mail = function (string $to, string $subject, string $html) use ($config): void {
+    if (!\Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Mailer::send($config, $to, $subject, $html, $error) && $error !== null) {
+        fwrite(STDERR, 'mail: ' . $error . "\n");
+    }
+};
+$returns_mail = function ($event, $id) use ($db, $config, $mail): void {
+    $admin = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::getState($db, DB_PREFIX, 'admin_url');
+    $links = $admin === '' ? [] : [
+        'requests' => $admin . 'index.php?route=extension/couriercenter/shipping/courier_center_returns',
+        'order'    => $admin . 'index.php?route=sale/order.info&order_id=',
+    ];
+    $svc = new \Opencart\Extension\Couriercenter\Library\CCReturnsService($db, DB_PREFIX, $config);
+    foreach ($svc->mailsFor((string)$event, (int)$id, $links, (string)$config->get('config_email')) as $m) {
+        $mail($m['to'], $m['subject'], $m['html']);
+    }
+};
+$completed_mail = function ($order_id) use ($db, $config, $mail): void {
+    $m = (new \Opencart\Extension\Couriercenter\Library\CCVoucherService($db, $config, DB_PREFIX))->completedEmail((int)$order_id);
+    if ($m) {
+        $mail($m['to'], $m['subject'], $m['html']);
+    }
+};
+$result = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Cron::run($db, DB_PREFIX, $config, DIR_CACHE, $returns_mail, $completed_mail);
 foreach ($result['lines'] as $line) {
     echo '  ' . $line . "\n";
 }

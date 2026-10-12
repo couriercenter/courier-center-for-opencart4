@@ -13,10 +13,11 @@ class CCOc4Cron {
     /**
      * @param object        $config   OpenCart Config (or any object with get())
      * @param string        $lock_dir writable folder (DIR_CACHE)
-     * @param callable|null $notifier returns emails (event, id); the CLI has no mail: null
+     * @param callable|null $notifier returns emails (event, id)
+     * @param callable|null $on_completed function (order_id): «Η παραγγελία ολοκληρώθηκε» email
      * @return array ['ran' => bool, 'message' => string, 'lines' => string[]]
      */
-    public static function run($db, string $prefix, $config, string $lock_dir, $notifier = null): array {
+    public static function run($db, string $prefix, $config, string $lock_dir, $notifier = null, $on_completed = null): array {
         $lock = rtrim(str_replace('\\', '/', $lock_dir), '/') . '/cc_cron.lock';
         if (is_file($lock) && (time() - (int)@filemtime($lock)) < self::LOCK_TTL) {
             return ['ran' => false, 'message' => 'Another run is in progress (' . basename($lock) . ')', 'lines' => []];
@@ -24,10 +25,11 @@ class CCOc4Cron {
         @file_put_contents($lock, (string)time());
         try {
             $svc = new CCVoucherService($db, $config, $prefix);
-            $report = $svc->tracker()->run();
+            $report = $svc->tracker($on_completed)->run();
             $returns = new CCReturnsService($db, $prefix, $config, $svc->api(), $notifier);
             $lines = array_merge($report['lines'], (new CCReturnsTracker($returns))->cron());
             CCOc4Setup::setState($db, $prefix, 'cron_last_run', date('Y-m-d H:i:s'));
+            CCOc4Setup::setState($db, $prefix, 'cron_last_run_ts', (string)time()); // the pseudo-cron looks at this one
             CCOc4Setup::setState($db, $prefix, 'cron_next_run', date('Y-m-d H:i:s', time() + 7200));
             return [
                 'ran'     => true,

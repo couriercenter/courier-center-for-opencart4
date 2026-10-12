@@ -110,14 +110,17 @@
   {% endif %}
   <div class="cc-msg mt-2"></div>
 
-  {% if returns %}
+  {% if returns or can_add_return or return_notice %}
   <hr>
-  <h5>↩️ Επιστροφές πελάτη</h5>
+  <h5>↩️ Επιστροφές</h5>
+  {% if return_notice %}<div class="alert alert-{{ (return_notice.type == 'success' ? 'success' : 'warning')|e }}" id="cc-return-notice">{{ return_notice.text|e }}</div>{% endif %}
   <div id="cc-ret-msg"></div>
+  {% if not returns %}<p class="text-muted">Δεν υπάρχουν επιστροφές για αυτή την παραγγελία.</p>{% endif %}
   {% for r in returns %}
   <div class="cc-form-section" data-id="{{ r.id|e }}">
-    <strong>#{{ r.id|e }} — {{ r.status_label|e }}</strong> <small class="text-muted">{{ r.created_at|e }}</small><br>
+    <strong>#{{ r.id|e }} — {{ r.status_label|e }}</strong> <small class="text-muted">{{ r.created_at|e }} · Από: {{ (r.from_shop ? 'Κατάστημα' : 'Πελάτης')|e }}</small><br>
     <small>{{ r.method_label|e }}{% if r.locker_label %} · Θυρίδα: {{ r.locker_label|e }}{% endif %} · {{ r.items|e }}</small>
+    {% if r.pickup_label %}<br><small>Παραλαβή: <strong>{{ r.pickup_label|e }}</strong> · {{ r.pickup_address|e }}{% if r.courier_notes %} · «{{ r.courier_notes|e }}»{% endif %}</small>{% endif %}
     {% if r.reason %}<br><small class="text-muted">«{{ r.reason|e }}»</small>{% endif %}
     {% if r.return_awb %}<br><small>AWB επιστροφής: <strong>{{ r.return_awb|e }}</strong>{% if r.rsn %} · Κωδικός BOX NOW: <strong>{{ r.rsn|e }}</strong>{% endif %}{% if r.tracking %} · 📍 {{ r.tracking|e }}{% endif %}</small>{% endif %}
     {% if r.last_error %}<br><small class="text-danger">{{ r.last_error|e }}</small>{% endif %}
@@ -131,6 +134,7 @@
     </div>
   </div>
   {% endfor %}
+  {% if can_add_return %}<a href="{{ url_add_return|e }}" class="btn btn-light btn-sm" id="cc-add-return"><i class="fa-solid fa-plus"></i> Νέα επιστροφή</a>{% endif %}
   {% endif %}
 </div>
 </div>

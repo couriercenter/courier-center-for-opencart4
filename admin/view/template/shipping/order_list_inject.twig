@@ -2,6 +2,7 @@
 (function () {
   var DATA = {{ shipments|json_encode }};
   var METHODS = {{ methods|json_encode }};
+  var RETURNS = {{ returns|json_encode }};
   var TRACK = {{ tracking_url|json_encode }};
   var URLS = {{ urls|json_encode }};
   var MANIFEST = {{ url_manifest|json_encode }};
@@ -133,7 +134,7 @@
     if (!table) return;
     var head = table.querySelector('thead tr');
     if (head && !head.querySelector('.cc-col-head')) {
-      ['Μέθοδος', 'Τύπος', 'CC Voucher', 'CC Status'].forEach(function (t) {
+      ['Μέθοδος', 'Τύπος', 'CC Voucher', 'CC Status', 'Επιστροφή'].forEach(function (t) {
         var td = el('td', 'text-center d-none d-lg-table-cell cc-col-head');
         td.appendChild(el('small', 'text-muted', t));
         head.appendChild(td);
@@ -167,7 +168,8 @@
         tdS = badge(SHORT[s.status_desc] || s.status_desc || (code ? 'Κωδικός ' + code : '—'), color, bg);
         if (s.status_desc) tdS.title = s.status_desc;
       }
-      tr.appendChild(tdM); tr.appendChild(tdT); tr.appendChild(tdV); tr.appendChild(tdS);
+      var tdR = RETURNS[id] ? badge('↩️ ' + RETURNS[id], '#7a4b00', '#fff8e5') : badge('—', '#ccc');
+      tr.appendChild(tdM); tr.appendChild(tdT); tr.appendChild(tdV); tr.appendChild(tdS); tr.appendChild(tdR);
     });
   }
   function init() { addToolbarButtons(); addBulkBar(); addColumns(); }

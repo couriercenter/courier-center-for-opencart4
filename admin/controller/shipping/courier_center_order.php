@@ -70,9 +70,12 @@ class CourierCenterOrder extends \Opencart\System\Engine\Controller {
             }
 
             $returns = [];
-            foreach ($this->ccReturns()->repo()->forOrder($order_id) as $r) {
+            $svc_ret = $this->ccReturns();
+            foreach ($svc_ret->repo()->forOrder($order_id) as $r) {
                 $returns[] = $this->ccReturnRow($r);
             }
+            $return_notice = $this->session->data['cc_return_notice'] ?? null;
+            unset($this->session->data['cc_return_notice']);
             $base = CCOc4Setup::BASE_ROUTE . '.';
             $return_labels = ['optional' => 'Προαιρετικό', 'mandatory' => 'Υποχρεωτικό'];
             $data = [
@@ -93,6 +96,9 @@ class CourierCenterOrder extends \Opencart\System\Engine\Controller {
                 'point_info'          => $point_info,
                 'consignee'           => $this->ccText($consignee),
                 'returns'             => $returns,
+                'can_add_return'      => $svc_ret->hasActiveAwb($order_id) && $this->ccCanModify(),
+                'url_add_return'      => $this->ccLink(CCOc4Setup::BASE_ROUTE . '_returns.add', 'order_id=' . $order_id),
+                'return_notice'       => $return_notice,
                 'urls'                => [
                     'create'       => $this->ccLink($base . 'createVoucher'),
                     'void'         => $this->ccLink($base . 'voidShipment'),

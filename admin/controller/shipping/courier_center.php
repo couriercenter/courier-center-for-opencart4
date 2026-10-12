@@ -127,13 +127,19 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
             'require_approval'     => $rs->requireApproval(),
             'window_days'          => $rs->windowDays(),
             'method_dropoff'       => in_array(CCReturnsRules::METHOD_DROPOFF, $rs->enabledMethods(), true),
+            'method_pickup'        => in_array(CCReturnsRules::METHOD_PICKUP, $rs->enabledMethods(), true),
             'method_boxnow'        => in_array(CCReturnsRules::METHOD_BOXNOW, $rs->enabledMethods(), true),
+            'admin_notify'         => $rs->adminNotify(),
+            'admin_emails'         => $this->ccText($this->config->get($this->prefix . 'returns_admin_emails')),
             'weight'               => $rs->weight(),
             'accounts'             => $rs->accountRows(),
             'dropoff_instructions' => $this->ccText($this->config->get($this->prefix . 'returns_dropoff_instructions')),
             'boxnow_instructions'  => $this->ccText($this->config->get($this->prefix . 'returns_boxnow_instructions')),
+            'pickup_instructions'  => $this->ccText($this->config->get($this->prefix . 'returns_pickup_instructions')),
         ];
-        $data['returns_defaults'] = ['dropoff' => CCReturnsSettings::DEFAULT_DROPOFF_TEXT, 'boxnow' => CCReturnsSettings::DEFAULT_BOXNOW_TEXT];
+        $data['returns_defaults'] = ['dropoff_instructions' => CCReturnsSettings::DEFAULT_DROPOFF_TEXT, 'pickup_instructions' => CCReturnsSettings::DEFAULT_PICKUP_TEXT,
+            'boxnow_instructions' => CCReturnsSettings::DEFAULT_BOXNOW_TEXT];
+        $data['shop_email'] = (string)$this->config->get('config_email');
         $data['locker_sizes'] = CCReturnsRules::LOCKER_SIZES;
         $data['dropoff_shipper'] = CCReturnsRules::DROPOFF_SHIPPER;
 

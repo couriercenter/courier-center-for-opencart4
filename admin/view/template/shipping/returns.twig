@@ -39,8 +39,8 @@
               <tr data-id="{{ r.id|e }}">
                 <td>{{ r.id|e }}</td>
                 <td><a href="{{ r.order_url|e }}">#{{ r.order_id|e }}</a></td>
-                <td>{{ r.customer|e }}</td>
-                <td>{{ r.method_label|e }}{% if r.locker_label %}<br><small>Θυρίδα: {{ r.locker_label|e }}</small>{% endif %}</td>
+                <td>{{ r.customer|e }}{% if r.from_shop %}<br><small class="text-muted">Από: Κατάστημα</small>{% endif %}</td>
+                <td>{{ r.method_label|e }}{% if r.locker_label %}<br><small>Θυρίδα: {{ r.locker_label|e }}</small>{% endif %}{% if r.pickup_label %}<br><small>Παραλαβή: {{ r.pickup_label|e }}</small>{% endif %}</td>
                 <td><small>{{ r.items|e }}</small>{% if r.reason %}<br><small class="text-muted">«{{ r.reason|e }}»</small>{% endif %}</td>
                 <td><strong>{{ r.status_label|e }}</strong>{% if r.last_error %}<br><small class="text-danger">{{ r.last_error|e }}</small>{% endif %}</td>
                 <td>{{ r.original_awb|e }}</td>

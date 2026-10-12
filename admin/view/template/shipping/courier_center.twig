@@ -215,8 +215,8 @@
           </div>
 
           <legend class="mt-4">↩️ Επιστροφές <small class="fs-6"><a href="{{ url_returns|e }}">→ Λίστα αιτημάτων επιστροφής</a></small></legend>
-          <p class="form-text">Ο πελάτης ζητά επιστροφή από τη σελίδα της παραγγελίας στον λογαριασμό του (μόνο ολοκληρωμένες παραγγελίες με ενεργό voucher). Η αποστολή επιστροφής δημιουργείται μετά την έγκρισή σου (ή αμέσως, αν απενεργοποιήσεις την έγκριση).</p>
-          {% for key, label in {'enabled': 'Ενεργοποίηση επιστροφών', 'require_approval': 'Απαιτείται έγκριση', 'method_dropoff': 'Παράδοση σε κατάστημα Courier Center (Drop Off)', 'method_boxnow': 'Παράδοση σε BOX NOW locker'} %}
+          <p class="form-text">Ο πελάτης ζητά επιστροφή από τη σελίδα της παραγγελίας στον λογαριασμό του (μόνο ολοκληρωμένες παραγγελίες με ενεργό voucher). Η αποστολή επιστροφής δημιουργείται μετά την έγκρισή σου (ή αμέσως, αν απενεργοποιήσεις την έγκριση). Επιστροφή μπορείς να δημιουργήσεις και εσύ, από το panel Courier Center της παραγγελίας («Νέα επιστροφή»), για κάθε παραγγελία με ενεργό voucher.</p>
+          {% for key, label in {'enabled': 'Ενεργοποίηση επιστροφών', 'require_approval': 'Απαιτείται έγκριση', 'method_dropoff': 'Παράδοση σε κατάστημα Courier Center (Drop Off)', 'method_pickup': 'Παραλαβή από τη διεύθυνση του πελάτη (Pickup)', 'method_boxnow': 'Παράδοση σε BOX NOW locker'} %}
           <div class="row mb-3">
             <label class="col-sm-2 col-form-label">{{ label|e }}</label>
             <div class="col-sm-10"><select name="shipping_courier_center_returns_{{ key|e }}" class="form-select" style="width:auto;">
@@ -224,7 +224,8 @@
               <option value="0"{% if not attribute(returns, key) %} selected{% endif %}>Όχι</option>
             </select>
               {% if key == 'method_dropoff' %}<div class="form-text">Προεπιλεγμένη μέθοδος. Στοιχεία αποστολέα Drop Off (σταθερά): ΤΚ {{ dropoff_shipper.ZipCode|e }} / {{ dropoff_shipper.Area|e }} / {{ dropoff_shipper.City|e }}.</div>{% endif %}
-              {% if key == 'method_boxnow' %}<div class="form-text">Ο πελάτης διαλέγει μέγεθος θυρίδας: {% for sz in locker_sizes %}{{ sz.label|e }} ({{ sz.dims|e }}){% if not loop.last %}, {% endif %}{% endfor %}. Η παραλαβή από τη διεύθυνση του πελάτη δεν προσφέρεται (δεν υπάρχει επιβεβαιωμένο πεδίο API για το ωράριο).</div>{% endif %}
+              {% if key == 'method_pickup' %}<div class="form-text">Ο courier παραλαμβάνει το δέμα από τη διεύθυνση του πελάτη, την εργάσιμη ημέρα (από την επόμενη, όχι Σάββατο/Κυριακή) και προαιρετικά το διάστημα τουλάχιστον 4 ωρών, 09:00–17:00, που επιλέγει. Αν η έγκριση γίνει αφού περάσει η ημερομηνία, η παραλαβή μεταφέρεται στην επόμενη εργάσιμη. Χρέωση: Έδρα ή σημείο με χρέωση στον κεντρικό → ο κεντρικός (Requestor)· αλλιώς ο λογαριασμός επιστροφών (Consignee).</div>{% endif %}
+              {% if key == 'method_boxnow' %}<div class="form-text">Ο πελάτης διαλέγει μέγεθος θυρίδας: {% for sz in locker_sizes %}{{ sz.label|e }} ({{ sz.dims|e }}){% if not loop.last %}, {% endif %}{% endfor %}.</div>{% endif %}
             </div>
           </div>
           {% endfor %}
@@ -253,13 +254,22 @@
               <div class="form-text">Αν η επιστροφή πρέπει να πηγαίνει σε άλλον κωδικό από αυτόν που έστειλε την αρχική αποστολή (Έδρα ή υποκωδικός), αντιστοίχισέ τους εδώ. Χωρίς αντιστοίχιση, πηγαίνει στον αρχικό κωδικό.</div>
             </div>
           </div>
-          {% for key, label in {'dropoff_instructions': 'Οδηγίες Drop Off', 'boxnow_instructions': 'Οδηγίες BOX NOW'} %}
+          {% for key, label in {'dropoff_instructions': 'Οδηγίες Drop Off', 'pickup_instructions': 'Οδηγίες Pickup', 'boxnow_instructions': 'Οδηγίες BOX NOW'} %}
           <div class="row mb-3">
             <label class="col-sm-2 col-form-label">{{ label|e }}</label>
-            <div class="col-sm-10"><textarea name="shipping_courier_center_returns_{{ key|e }}" rows="2" class="form-control" placeholder="{{ (key == 'dropoff_instructions' ? returns_defaults.dropoff : returns_defaults.boxnow)|e }}">{{ attribute(returns, key)|e }}</textarea>
+            <div class="col-sm-10"><textarea name="shipping_courier_center_returns_{{ key|e }}" rows="2" class="form-control" placeholder="{{ attribute(returns_defaults, key)|e }}">{{ attribute(returns, key)|e }}</textarea>
               <div class="form-text">Εμφανίζονται στον πελάτη (σελίδα και email) μετά τη δημιουργία της επιστροφής. Κενό = το προεπιλεγμένο κείμενο.</div></div>
           </div>
           {% endfor %}
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Email «Νέο αίτημα επιστροφής»</label>
+            <div class="col-sm-10"><select name="shipping_courier_center_returns_admin_notify" class="form-select" style="width:auto;">
+              <option value="1"{% if returns.admin_notify %} selected{% endif %}>Ναι</option>
+              <option value="0"{% if not returns.admin_notify %} selected{% endif %}>Όχι</option>
+            </select>
+              <input type="text" name="shipping_courier_center_returns_admin_emails" value="{{ returns.admin_emails|e }}" class="form-control mt-2" style="max-width:520px;" placeholder="{{ shop_email|e }}">
+              <div class="form-text">Email στο κατάστημα για κάθε αίτημα επιστροφής που υποβάλλει πελάτης (με ή χωρίς έγκριση). Παραλήπτες χωρισμένοι με κόμμα· κενό = το email του καταστήματος ({{ shop_email|e }}). Τα αιτήματα που περιμένουν ενέργεια φαίνονται και ως αριθμός στο μενού Πωλήσεις → Επιστροφές Courier Center και ως ειδοποίηση στον Πίνακα ελέγχου.</div></div>
+          </div>
 
           <legend class="mt-4">⏱️ Αυτόματη ενημέρωση κατάστασης (cron)</legend>
           <div class="row mb-3">

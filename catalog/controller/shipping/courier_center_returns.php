@@ -98,7 +98,7 @@ class CourierCenterReturns extends \Opencart\System\Engine\Controller {
                 'mobile'      => $this->ccText($posted['mobile'] ?? ''),
                 'landline'    => $this->ccText($posted['landline'] ?? ''),
                 'locker_size' => (string)($posted['locker_size'] ?? ''),
-            ]);
+            ] + $this->ccPickupPost($posted));
             if ($r['ok']) {
                 $row = $svc->repo()->get((int)$r['id']);
                 $this->session->data['cc_return_success'] = ($row && $row['status'] === CCReturnsRules::ST_CREATED)
@@ -143,7 +143,7 @@ class CourierCenterReturns extends \Opencart\System\Engine\Controller {
             'boxnow'      => CCReturnsRules::METHOD_BOXNOW,
             'msg_phone'   => CCReturnsRules::MSG_PHONE,
             'msg_mobile'  => CCReturnsRules::MSG_MOBILE,
-        ]);
+        ] + $this->ccPickupView($posted, $defaults));
     }
 
     /** Storefront link with language + customer_token (+ order_id). */
@@ -178,14 +178,16 @@ class CourierCenterReturns extends \Opencart\System\Engine\Controller {
             $items[] = (string)($line['name'] ?? '') . ' × ' . (int)($line['qty'] ?? 0);
         }
         $tracking = (string)$r['display_status'];
+        $pickup = ($r['method'] === CCReturnsRules::METHOD_PICKUP && !$created && $r['status'] !== CCReturnsRules::ST_REJECTED) ? \Opencart\Extension\Couriercenter\Library\CCReturnsService::pickupLabel($r) : '';
         return [
             'id'           => (int)$r['id'],
             'date'         => (string)$r['created_at'],
             'status_label' => CCReturnsRules::customer_status_label($r['status']),
             'method_label' => CCReturnsRules::method_label($r['method']),
             'items'        => implode(', ', $items),
+            'pickup'       => $pickup,
             'parts'        => $parts,
-            'instructions' => $created ? ($r['method'] === CCReturnsRules::METHOD_BOXNOW ? $svc->settings()->boxnowInstructions() : $svc->settings()->dropoffInstructions()) : '',
+            'instructions' => $created ? $svc->settings()->instructionsFor($r['method']) : '',
             'tracking'     => ($created && $tracking !== '' && $tracking !== 'None' && (string)$r['shipment_status'] !== '0') ? $tracking : '',
         ];
     }

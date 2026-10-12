@@ -43,6 +43,21 @@
             {% endfor %}
           </div>
         </fieldset>
+        <fieldset class="mb-3" id="cc-pickup"{% if method != pickup %} style="display:none;"{% endif %}>
+          <legend>Στοιχεία παραλαβής</legend>
+          <div class="mb-3 required"><label class="form-label" for="cc-pickup-address">Διεύθυνση παραλαβής</label><input type="text" name="pickup_address" id="cc-pickup-address" value="{{ pickup_address|e }}" maxlength="100" class="form-control"></div>
+          <div class="row">
+            <div class="col-sm-8 mb-3 required"><label class="form-label" for="cc-pickup-city">Πόλη</label><input type="text" name="pickup_city" id="cc-pickup-city" value="{{ pickup_city|e }}" maxlength="60" class="form-control"></div>
+            <div class="col-sm-4 mb-3 required"><label class="form-label" for="cc-pickup-postcode">ΤΚ</label><input type="text" name="pickup_postcode" id="cc-pickup-postcode" value="{{ pickup_postcode|e }}" maxlength="6" inputmode="numeric" class="form-control"></div>
+          </div>
+          <div class="mb-3 required"><label class="form-label" for="cc-pickup-date">Ημερομηνία παραλαβής</label>
+            <select name="pickup_date" id="cc-pickup-date" class="form-select" style="max-width:260px;">{% for d in pickup_dates %}<option value="{{ d.value|e }}"{% if d.value == pickup_date %} selected{% endif %}>{{ d.label|e }}</option>{% endfor %}</select></div>
+          <div class="mb-3"><label class="form-label" for="cc-pickup-from">Χρονικό διάστημα (προαιρετικό)</label>
+            <div class="d-flex gap-2 align-items-center">Από <select name="pickup_time_from" id="cc-pickup-from" class="form-select" style="width:auto;"><option value="">—</option>{% for h in hours_from %}<option value="{{ h|e }}"{% if h == pickup_from %} selected{% endif %}>{{ h|e }}</option>{% endfor %}</select>
+              Έως <select name="pickup_time_to" id="cc-pickup-to" class="form-select" style="width:auto;"><option value="">—</option>{% for h in hours_to %}<option value="{{ h|e }}"{% if h == pickup_to %} selected{% endif %}>{{ h|e }}</option>{% endfor %}</select></div>
+            <div class="form-text">Τουλάχιστον 4 ώρες, 09:00–17:00. Χωρίς διάστημα ο courier έρχεται οποιαδήποτε ώρα 09:00–17:00.</div></div>
+          <div class="mb-3"><label class="form-label" for="cc-courier-notes">Οδηγίες για τον courier (προαιρετικό)</label><textarea name="courier_notes" id="cc-courier-notes" rows="2" maxlength="{{ notes_max|e }}" class="form-control">{{ courier_notes|e }}</textarea></div>
+        </fieldset>
         <fieldset class="mb-3">
           <legend>Στοιχεία αποστολέα</legend>
           <div class="mb-3 required"><label class="form-label" for="cc-name">Ονοματεπώνυμο</label><input type="text" name="name" id="cc-name" value="{{ name|e }}" class="form-control"></div>
@@ -59,11 +74,22 @@
       (function () {
         var form = document.getElementById('cc-return-form'), BOXNOW = {{ boxnow|json_encode }};
         var MSG_PHONE = {{ msg_phone|json_encode }}, MSG_MOBILE = {{ msg_mobile|json_encode }};
+        var PICKUP = {{ pickup|json_encode }}, MIN_H = {{ min_hours|json_encode }}, MSG_HALF = {{ msg_pickup_half|json_encode }}, MSG_WINDOW = {{ msg_pickup_window|json_encode }};
+        var from = document.getElementById('cc-pickup-from'), to = document.getElementById('cc-pickup-to');
+        function hour(v) { return v ? parseInt(String(v).substring(0, 2), 10) : NaN; }
+        function filterTo() {
+          var f = hour(from.value);
+          Array.prototype.forEach.call(to.options, function (o) { var ok = !o.value || isNaN(f) || hour(o.value) - f >= MIN_H; o.disabled = !ok; o.hidden = !ok; });
+          if (to.selectedOptions && to.selectedOptions[0] && to.selectedOptions[0].disabled) { to.value = ''; }
+        }
+        from.addEventListener('change', filterTo);
+        filterTo();
         function method() { var c = form.querySelector('input[name="method"]:checked'); return c ? c.value : ''; }
         function digits(v) { v = String(v || '').replace(/\D+/g, ''); if (v.indexOf('0030') === 0) v = v.slice(4); else if (v.indexOf('30') === 0 && v.length === 12) v = v.slice(2); return v; }
         function refresh() {
           var bn = method() === BOXNOW;
           document.getElementById('cc-sizes').style.display = bn ? '' : 'none';
+          document.getElementById('cc-pickup').style.display = method() === PICKUP ? '' : 'none';
           document.getElementById('cc-landline-row').style.display = bn ? 'none' : '';
           document.getElementById('cc-phone-help').textContent = bn ? MSG_MOBILE : MSG_PHONE;
         }
@@ -76,6 +102,10 @@
           else if (bn && !/^69\d{8}$/.test(m) && !/^69\d{8}$/.test(l)) err = MSG_MOBILE;
           else if (!bn && !/^(69|2)\d{8,9}$/.test(m) && !/^(69|2)\d{8,9}$/.test(l)) err = MSG_PHONE;
           else if (bn && !form.querySelector('input[name="locker_size"]:checked')) err = 'Επιλέξτε μέγεθος BOX NOW locker (Μικρό, Μεσαίο ή Μεγάλο).';
+          else if (method() === PICKUP && (!form.pickup_address.value.trim() || !form.pickup_city.value.trim())) err = 'Συμπληρώστε διεύθυνση και πόλη παραλαβής.';
+          else if (method() === PICKUP && !/^\d{5}$/.test(form.pickup_postcode.value.replace(/\s+/g, ''))) err = 'Ο ΤΚ της διεύθυνσης παραλαβής πρέπει να έχει 5 ψηφία.';
+          else if (method() === PICKUP && (!from.value !== !to.value)) err = MSG_HALF;
+          else if (method() === PICKUP && from.value && hour(to.value) - hour(from.value) < MIN_H) err = MSG_WINDOW;
           if (err) { e.preventDefault(); alert(err); return; }
           document.getElementById('cc-submit').disabled = true;
         });

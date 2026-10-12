@@ -6,6 +6,7 @@
     <div class="card-body">
       <strong>Αίτημα #{{ r.id|e }}</strong> — {{ r.status_label|e }} <small class="text-muted">({{ r.date|e }})</small><br>
       <small>{{ r.method_label|e }} · {{ r.items|e }}</small>
+      {% if r.pickup %}<br><small>Παραλαβή: {{ r.pickup|e }}</small>{% endif %}
       {% if r.parts %}
       <div class="alert alert-success mt-2 mb-0">
         {% for p in r.parts %}

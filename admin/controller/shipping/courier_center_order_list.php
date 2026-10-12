@@ -26,6 +26,7 @@ class CourierCenterOrderList extends \Opencart\System\Engine\Controller {
             $svc = $this->ccService();
             $shipments = [];
             $methods = [];
+            $returns = [];
             if ($ids) {
                 $list = implode(',', $ids);
                 foreach ($this->db->query("SELECT * FROM `" . DB_PREFIX . "cc_shipments` WHERE `order_id` IN (" . $list . ")")->rows as $row) {
@@ -42,6 +43,10 @@ class CourierCenterOrderList extends \Opencart\System\Engine\Controller {
                 foreach ($this->db->query("SELECT `order_id`, `shipping_method` FROM `" . DB_PREFIX . "order` WHERE `order_id` IN (" . $list . ")")->rows as $row) {
                     $methods[(string)$row['order_id']] = ['name' => CCVoucherService::shippingName($row), 'managed' => $svc->isHandledOrder($row)];
                 }
+                // «Επιστροφή»: status of the newest return request (+N when there are more)
+                foreach ((new \Opencart\Extension\Couriercenter\Library\CCReturnsRepo($this->db, DB_PREFIX))->summaryForOrders($ids) as $id => $r) {
+                    $returns[(string)$id] = \Opencart\Extension\Couriercenter\Library\CCReturnsRules::status_label($r['status']) . ($r['count'] > 1 ? ' (+' . ($r['count'] - 1) . ')' : '');
+                }
             }
             $points = [];
             if ($svc->points()->hasSubs()) {
@@ -54,6 +59,7 @@ class CourierCenterOrderList extends \Opencart\System\Engine\Controller {
             $output .= $this->load->view('extension/couriercenter/shipping/order_list_inject', [
                 'shipments'     => (object)$shipments,
                 'methods'       => (object)$methods,
+                'returns'       => (object)$returns,
                 'tracking_url'  => $tracking !== '' ? $tracking : 'https://www.courier.gr/track/result?tracknr={{tracking}}',
                 'points'        => $points,
                 'default_point' => $svc->points()->defaultCode(),

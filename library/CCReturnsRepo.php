@@ -14,16 +14,18 @@ class CCReturnsRepo {
 
     /** Columns a caller may write (id never). */
     const COLUMNS = [
-        'request_uid', 'reference_token', 'order_id', 'customer_id', 'status', 'method', 'items', 'reason',
+        'request_uid', 'reference_token', 'order_id', 'customer_id', 'status', 'method', 'items', 'reason', 'origin', 'notify_customer',
         'original_awb', 'original_shipper_code', 'return_account_code', 'requestor_account', 'shipper_details',
-        'locker_size', 'locker_reference',
+        'pickup_date', 'pickup_time_from', 'pickup_time_to', 'locker_size', 'locker_reference',
         'return_awb', 'return_shipment_number', 'inbound_shipment_number', 'shipment_master_id',
         'shipment_status', 'shipment_status_desc', 'collection_status', 'display_status', 'tracking_final',
         'last_error', 'attempts', 'locked_at', 'decided_by',
         'created_at', 'updated_at', 'approved_at', 'shipment_created_at', 'last_tracking_at',
     ];
     const JSON_COLUMNS = ['items', 'shipper_details'];
-    const INT_COLUMNS = ['id', 'order_id', 'customer_id', 'attempts', 'tracking_final', 'decided_by'];
+    const INT_COLUMNS = ['id', 'order_id', 'customer_id', 'attempts', 'tracking_final', 'decided_by', 'notify_customer'];
+    /** Statuses that need the shop's action (menu counter, admin notice). */
+    const ACTION_STATUSES = [CCReturnsRules::ST_PENDING, CCReturnsRules::ST_VERIFY, CCReturnsRules::ST_FAILED, CCReturnsRules::ST_APPROVED];
 
     /** @var object */
     private $db;
@@ -133,6 +135,33 @@ class CCReturnsRepo {
         $out = [];
         foreach ($this->db->query("SELECT `status`, COUNT(*) AS n FROM `" . $this->table . "` GROUP BY `status`")->rows as $r) {
             $out[$r['status']] = (int)$r['n'];
+        }
+        return $out;
+    }
+
+    /** Requests that need the shop's action (ACTION_STATUSES). */
+    public function pendingCount(): int {
+        $in = "'" . implode("','", self::ACTION_STATUSES) . "'";
+        $q = $this->db->query("SELECT COUNT(*) AS n FROM `" . $this->table . "` WHERE `status` IN (" . $in . ")");
+        return (int)($q->row['n'] ?? 0);
+    }
+
+    /**
+     * For an order list: order_id => ['status' => status of the newest request, 'count' => requests].
+     * @param int[] $order_ids
+     */
+    public function summaryForOrders(array $order_ids): array {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $order_ids))));
+        if (!$ids) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->db->query("SELECT `order_id`, `status` FROM `" . $this->table . "` WHERE `order_id` IN (" . implode(',', $ids) . ") ORDER BY `id` DESC")->rows as $r) {
+            $oid = (int)$r['order_id'];
+            if (!isset($out[$oid])) {
+                $out[$oid] = ['status' => (string)$r['status'], 'count' => 0];
+            }
+            $out[$oid]['count']++;
         }
         return $out;
     }

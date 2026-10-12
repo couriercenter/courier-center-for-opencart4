@@ -1,7 +1,8 @@
 <?php
 /**
  * Returns: pure rules (no DB, no API) - method / status constants, phone rules, BOX NOW locker
- * sizes, account-code comparison and the «ΑΣΚΟΠΗ ΠΡΟΣΕΛΕΥΣΗ» display rule.
+ * sizes, Pickup dates / time window, return billing, account-code comparison and the
+ * «ΑΣΚΟΠΗ ΠΡΟΣΕΛΕΥΣΗ» display rule.
  * Port of CC_Returns_Rules (WooCommerce 1.6.0). Shared by OpenCart 3 and 4, PHP 7.2+.
  * Errors are returned as ['error' => message].
  */
@@ -26,7 +27,7 @@ class CCReturnsRules {
     /** Drop Off shipper (fixed values, confirmed on the API). */
     const DROPOFF_SHIPPER = ['ZipCode' => '91919', 'Area' => 'DROPOFF', 'City' => 'DROPOFF'];
 
-    /** UNCONFIRMED for every return: values of the tested BOX NOW payload. */
+    /** Fixed shipper of every BOX NOW return (confirmed by Courier Center). */
     const BOXNOW_SHIPPER = ['Address' => 'BOX NOW ATH', 'ZipCode' => '99981'];
 
     const LOCKER_SIZES = [
@@ -42,6 +43,23 @@ class CCReturnsRules {
 
     const MSG_PHONE  = 'Για τη δημιουργία της επιστροφής απαιτείται τουλάχιστον ένας έγκυρος αριθμός τηλεφώνου (σταθερό ή κινητό).';
     const MSG_MOBILE = 'Για επιστροφή μέσω BOX NOW απαιτείται έγκυρο ελληνικό κινητό τηλέφωνο (69XXXXXXXX).';
+
+    // Pickup (the courier collects the parcel at the customer's address)
+    const PICKUP_HOUR_MIN     = 9;
+    const PICKUP_HOUR_MAX     = 17;
+    const PICKUP_MIN_HOURS    = 4;
+    const PICKUP_DAYS         = 10;
+    const PICKUP_DEFAULT_FROM = '09:00';
+    const PICKUP_DEFAULT_TO   = '17:00';
+    const COURIER_NOTES_MAX   = 200;
+    /** The courier works in Greek time, whatever PHP's timezone is. */
+    const PICKUP_TIMEZONE     = 'Europe/Athens';
+
+    const MSG_PICKUP_DATE   = 'Η ημερομηνία παραλαβής δεν είναι διαθέσιμη. Επιλέξτε μία από τη λίστα.';
+    const MSG_PICKUP_HALF   = 'Συμπληρώστε και τα δύο άκρα του χρονικού διαστήματος ή κανένα.';
+    const MSG_PICKUP_WINDOW = 'Το διάστημα παραλαβής πρέπει να είναι τουλάχιστον 4 ώρες, μεταξύ 09:00 και 17:00.';
+
+    const DAY_NAMES = [1 => 'Δευτέρα', 2 => 'Τρίτη', 3 => 'Τετάρτη', 4 => 'Πέμπτη', 5 => 'Παρασκευή', 6 => 'Σάββατο', 7 => 'Κυριακή'];
 
     /** Digits only, without the +30 / 0030 prefix. */
     public static function normalize_phone($raw): string {
@@ -198,10 +216,133 @@ class CCReturnsRules {
             if (isset(self::LOCKER_SIZES[$size])) {
                 $parts[] = ['Επιλεγμένο μέγεθος: ', self::LOCKER_SIZES[$size]['label'], false];
             }
+        } elseif (($row['method'] ?? '') === self::METHOD_PICKUP) {
+            $sd = (isset($row['shipper_details']) && is_array($row['shipper_details'])) ? $row['shipper_details'] : [];
+            $parts[] = ['Ο courier θα παραλάβει το δέμα από τη διεύθυνση: ', self::pickup_address($sd), false];
+            $label = self::pickup_text($row['pickup_date'] ?? '', $row['pickup_time_from'] ?? '', $row['pickup_time_to'] ?? '');
+            if ($label !== '') {
+                $parts[] = ['Παραλαβή: ', $label, false];
+            }
+            $parts[] = ['Αριθμός αποστολής επιστροφής: ', (string)($row['return_awb'] ?? ''), false];
         } else {
             $parts[] = ['Μπορείτε να παραδώσετε το δέμα σας σε κατάστημα Courier Center.', '', false];
             $parts[] = ['Αριθμός αποστολής επιστροφής: ', (string)($row['return_awb'] ?? ''), false];
         }
         return $parts;
+    }
+
+    // ── Pickup ───────────────────────────────────────────────────────────
+
+    /** Now in the courier's timezone. */
+    public static function now_local(): \DateTimeImmutable {
+        return new \DateTimeImmutable('now', new \DateTimeZone(self::PICKUP_TIMEZONE));
+    }
+
+    /** The first day after $now that is not Saturday / Sunday (Y-m-d, in $now's timezone). */
+    public static function next_working_day(\DateTimeImmutable $now): string {
+        $d = $now->setTime(0, 0)->modify('+1 day');
+        while ((int)$d->format('N') >= 6) {
+            $d = $d->modify('+1 day');
+        }
+        return $d->format('Y-m-d');
+    }
+
+    /** PICKUP_DAYS working days from the next working day (Y-m-d). Public holidays are not removed. */
+    public static function pickup_dates(\DateTimeImmutable $now): array {
+        $d = new \DateTimeImmutable(self::next_working_day($now), $now->getTimezone());
+        $out = [];
+        while (count($out) < self::PICKUP_DAYS) {
+            if ((int)$d->format('N') < 6) {
+                $out[] = $d->format('Y-m-d');
+            }
+            $d = $d->modify('+1 day');
+        }
+        return $out;
+    }
+
+    /** '' when $date is one of pickup_dates($now), else the error text. */
+    public static function pickup_date_error($date, \DateTimeImmutable $now): string {
+        return in_array((string)$date, self::pickup_dates($now), true) ? '' : self::MSG_PICKUP_DATE;
+    }
+
+    /** Both empty = no window. Otherwise HH:00, 09-17, at least 4 hours. '' when valid, else the error text. */
+    public static function pickup_window_error($from, $to): string {
+        $from = trim((string)$from);
+        $to = trim((string)$to);
+        if ($from === '' && $to === '') {
+            return '';
+        }
+        if ($from === '' || $to === '') {
+            return self::MSG_PICKUP_HALF;
+        }
+        if (preg_match('/^\d{2}:00$/D', $from) !== 1 || preg_match('/^\d{2}:00$/D', $to) !== 1) {
+            return self::MSG_PICKUP_WINDOW;
+        }
+        $f = (int)substr($from, 0, 2);
+        $t = (int)substr($to, 0, 2);
+        if ($f < self::PICKUP_HOUR_MIN || $t > self::PICKUP_HOUR_MAX || $t - $f < self::PICKUP_MIN_HOURS) {
+            return self::MSG_PICKUP_WINDOW;
+        }
+        return '';
+    }
+
+    public static function pickup_hours_from(): array {
+        return self::hours(self::PICKUP_HOUR_MIN, self::PICKUP_HOUR_MAX - self::PICKUP_MIN_HOURS);
+    }
+
+    public static function pickup_hours_to(): array {
+        return self::hours(self::PICKUP_HOUR_MIN + self::PICKUP_MIN_HOURS, self::PICKUP_HOUR_MAX);
+    }
+
+    private static function hours(int $first, int $last): array {
+        $out = [];
+        for ($h = $first; $h <= $last; $h++) {
+            $out[] = sprintf('%02d:00', $h);
+        }
+        return $out;
+    }
+
+    /**
+     * BillTo of a return: the main code (Έδρα) or a point billed to the main code → Requestor;
+     * otherwise the consignee (the returns account) → Consignee.
+     * @param array|null $point CCPickupPoints::get() row (code, bill_to)
+     */
+    public static function bill_to($point, string $main_code): string {
+        if (!is_array($point) || empty($point['code'])) {
+            return 'Requestor';
+        }
+        if (self::codes_equal($point['code'], $main_code) || (($point['bill_to'] ?? '') === 'main')) {
+            return 'Requestor';
+        }
+        return 'Consignee';
+    }
+
+    /** «Τρίτη 13/10» ('' for an invalid date). */
+    public static function pickup_date_label($date): string {
+        $d = \DateTimeImmutable::createFromFormat('!Y-m-d', (string)$date);
+        if (!$d || $d->format('Y-m-d') !== (string)$date) {
+            return '';
+        }
+        return self::DAY_NAMES[(int)$d->format('N')] . ' ' . $d->format('d/m');
+    }
+
+    /** «Τρίτη 13/10/2026, 09:00–13:00» or «…, οποιαδήποτε ώρα 09:00–17:00» ('' without a valid date). */
+    public static function pickup_text($date, $from, $to): string {
+        $label = self::pickup_date_label($date);
+        if ($label === '') {
+            return '';
+        }
+        $label .= '/' . substr((string)$date, 0, 4);
+        $from = trim((string)$from);
+        $to = trim((string)$to);
+        if ($from === '' || $to === '') {
+            return $label . ', οποιαδήποτε ώρα ' . self::PICKUP_DEFAULT_FROM . '–' . self::PICKUP_DEFAULT_TO;
+        }
+        return $label . ', ' . $from . '–' . $to;
+    }
+
+    /** «Οδός 1, Πόλη 12345» from shipper_details. */
+    public static function pickup_address(array $sd): string {
+        return trim((string)($sd['address'] ?? '') . ', ' . (string)($sd['city'] ?? '') . ' ' . (string)($sd['postcode'] ?? ''), ' ,');
     }
 }

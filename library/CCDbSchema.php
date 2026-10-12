@@ -10,7 +10,7 @@ namespace Opencart\Extension\Couriercenter\Library;
 class CCDbSchema {
 
     /** Bump when a table/column is added: ensureOnce() then re-runs ensure() once. */
-    const VERSION = '2';
+    const VERSION = '3'; // 3: returns origin / notify_customer / Pickup date and window
 
     /** The setting row that remembers VERSION (same row in OpenCart 3 and 4). */
     const STATE_CODE = 'courier_center_state';
@@ -60,11 +60,16 @@ class CCDbSchema {
                 'method'                  => "VARCHAR(32) NOT NULL",
                 'items'                   => "MEDIUMTEXT NOT NULL",
                 'reason'                  => "TEXT NULL",
+                'origin'                  => "VARCHAR(10) NOT NULL DEFAULT 'customer'",
+                'notify_customer'         => "TINYINT(1) NOT NULL DEFAULT 1",
                 'original_awb'            => "VARCHAR(32) NOT NULL DEFAULT ''",
                 'original_shipper_code'   => "VARCHAR(32) NOT NULL DEFAULT ''",
                 'return_account_code'     => "VARCHAR(32) NOT NULL DEFAULT ''",
                 'requestor_account'       => "VARCHAR(32) NOT NULL DEFAULT ''",
                 'shipper_details'         => "MEDIUMTEXT NULL",
+                'pickup_date'             => "DATE NULL",
+                'pickup_time_from'        => "VARCHAR(5) NULL",
+                'pickup_time_to'          => "VARCHAR(5) NULL",
                 'locker_size'             => "VARCHAR(10) NOT NULL DEFAULT ''",
                 'locker_reference'        => "VARCHAR(4) NOT NULL DEFAULT ''",
                 'return_awb'              => "VARCHAR(32) NOT NULL DEFAULT ''",

@@ -12,11 +12,13 @@ class CCReturnsSettings {
 
     const DEFAULT_DROPOFF_TEXT = 'Συσκευάστε καλά το δέμα και παραδώστε το σε οποιοδήποτε κατάστημα Courier Center αναφέροντας τον αριθμό αποστολής επιστροφής.';
     const DEFAULT_BOXNOW_TEXT  = 'Συσκευάστε καλά το δέμα και παραδώστε το σε ένα BOX NOW locker χρησιμοποιώντας τον κωδικό BOX NOW επιστροφής.';
+    const DEFAULT_PICKUP_TEXT  = 'Ο courier της Courier Center θα παραλάβει το δέμα από τη διεύθυνση που δηλώσατε, την ημερομηνία που επιλέξατε. Έχετε το δέμα συσκευασμένο και έτοιμο.';
     const WEIGHT_MIN = 0.1;
     const WEIGHT_MAX = 30.0;
 
     /** The setting keys (without prefix) the settings form posts. */
-    const KEYS = ['enabled', 'require_approval', 'window_days', 'method_dropoff', 'method_boxnow', 'accounts', 'weight', 'dropoff_instructions', 'boxnow_instructions'];
+    const KEYS = ['enabled', 'require_approval', 'window_days', 'method_dropoff', 'method_pickup', 'method_boxnow', 'accounts', 'weight',
+        'dropoff_instructions', 'pickup_instructions', 'boxnow_instructions', 'admin_notify', 'admin_emails'];
 
     /** @var object */
     private $config;
@@ -53,10 +55,11 @@ class CCReturnsSettings {
         return ($v === null || $v === '') ? 14 : max(0, (int)$v);
     }
 
-    /** Enabled methods in METHODS_ORDER. Courier pickup is never enabled (no confirmed API field for the time window). */
+    /** Enabled methods in METHODS_ORDER. */
     public function enabledMethods(): array {
         $on = [
             CCReturnsRules::METHOD_DROPOFF => $this->flag('method_dropoff', '1'),
+            CCReturnsRules::METHOD_PICKUP  => $this->flag('method_pickup', '0'),
             CCReturnsRules::METHOD_BOXNOW  => $this->flag('method_boxnow', '0'),
         ];
         $out = [];
@@ -81,6 +84,51 @@ class CCReturnsSettings {
     public function boxnowInstructions(): string {
         $t = $this->text('boxnow_instructions');
         return trim($t) === '' ? self::DEFAULT_BOXNOW_TEXT : $t;
+    }
+
+    public function pickupInstructions(): string {
+        $t = $this->text('pickup_instructions');
+        return trim($t) === '' ? self::DEFAULT_PICKUP_TEXT : $t;
+    }
+
+    /** The customer instructions of a method (account page, "created" email). */
+    public function instructionsFor(string $method): string {
+        if ($method === CCReturnsRules::METHOD_BOXNOW) {
+            return $this->boxnowInstructions();
+        }
+        if ($method === CCReturnsRules::METHOD_PICKUP) {
+            return $this->pickupInstructions();
+        }
+        return $this->dropoffInstructions();
+    }
+
+    /** Email «Νέο αίτημα επιστροφής» to the shop (default on). */
+    public function adminNotify(): bool {
+        return $this->flag('admin_notify', '1');
+    }
+
+    /**
+     * Recipients of the shop email: the saved list, else $shop_email.
+     * @return string[]
+     */
+    public function adminEmails(string $shop_email): array {
+        $out = self::splitEmails($this->text('admin_emails'));
+        if (!$out) {
+            $out = self::splitEmails($shop_email);
+        }
+        return $out;
+    }
+
+    /** @return string[] the valid addresses of a comma / semicolon / space separated list */
+    public static function splitEmails(string $list): array {
+        $out = [];
+        foreach (preg_split('/[\s,;]+/', $list) as $e) {
+            $e = trim($e);
+            if ($e !== '' && filter_var($e, FILTER_VALIDATE_EMAIL) && !in_array($e, $out, true)) {
+                $out[] = $e;
+            }
+        }
+        return $out;
     }
 
     /** @return array[] rows ['original' => ..., 'return' => ...] */
@@ -165,7 +213,7 @@ class CCReturnsSettings {
      */
     public static function sanitizePost(array &$post, array $known_codes): array {
         // A field the form did not send gets the safe default (approval on, Drop Off on), never "off".
-        foreach (['enabled' => '0', 'require_approval' => '1', 'method_dropoff' => '1', 'method_boxnow' => '0'] as $f => $default) {
+        foreach (['enabled' => '0', 'require_approval' => '1', 'method_dropoff' => '1', 'method_pickup' => '0', 'method_boxnow' => '0', 'admin_notify' => '1'] as $f => $default) {
             if (!array_key_exists(self::P . $f, $post)) {
                 $post[self::P . $f] = $default;
                 continue;
@@ -176,6 +224,13 @@ class CCReturnsSettings {
         $post[self::P . 'weight'] = (string)self::clampWeight($post[self::P . 'weight'] ?? 1);
         $res = self::sanitizeAccounts($post[self::P . 'accounts'] ?? [], $known_codes);
         $post[self::P . 'accounts'] = $res['rows'];
-        return $res['errors'];
+        $errors = $res['errors'];
+        $raw = trim(strip_tags(html_entity_decode((string)($post[self::P . 'admin_emails'] ?? ''), ENT_QUOTES, 'UTF-8')));
+        $emails = self::splitEmails($raw);
+        $post[self::P . 'admin_emails'] = implode(', ', $emails);
+        if ($raw !== '' && count($emails) !== count(array_unique(array_filter(preg_split('/[\s,;]+/', $raw))))) {
+            $errors[] = 'Κάποιες διευθύνσεις email για το «Νέο αίτημα επιστροφής» δεν ήταν έγκυρες και αφαιρέθηκαν.';
+        }
+        return $errors;
     }
 }

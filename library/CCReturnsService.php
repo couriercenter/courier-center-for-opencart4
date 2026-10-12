@@ -1,7 +1,7 @@
 <?php
 /**
- * Returns service: eligibility, customer submission, approve / reject, creation of the return
- * shipment with an atomic claim (status "creating") and verification through GetShipmentDetails
+ * Returns service: eligibility, customer submission, shop-created returns, approve / reject, creation
+ * of the return shipment with an atomic claim (status "creating") and verification through GetShipmentDetails
  * (Identifier = reference token in Reference2) whenever the outcome is uncertain. The order's
  * normal shipment (cc_shipments, status, return AWB option) is never touched.
  * Port of CC_Returns_Service (WooCommerce 1.6.0). Shared by OpenCart 3 and 4, PHP 7.2+.
@@ -35,7 +35,11 @@ class CCReturnsService {
     private $repo;
     /** @var CCReturnsSettings */
     private $settings;
-    /** @var callable|null function (string $event, int $id): events received / created / rejected */
+    /**
+     * @var callable|null function (string $event, int $id): customer emails received / created / rejected
+     * (already filtered: none for a shop return without "email the customer", no "rejected" for a shop
+     * return) and 'submitted' (email «Νέο αίτημα επιστροφής» to the shop, customer requests only).
+     */
     private $notifier;
     /** @var callable|null function (string $level, string $message) */
     private $logger;
@@ -180,6 +184,17 @@ class CCReturnsService {
         ];
     }
 
+    /** The order has a Courier Center voucher that was not voided. */
+    public function hasActiveAwb(int $order_id): bool {
+        $s = $this->shipment($order_id);
+        return trim((string)($s['voucher_number'] ?? '')) !== '' && empty($s['is_voided']);
+    }
+
+    /** «Τρίτη 13/10/2026, 09:00–13:00» for a Pickup request ('' without a date). */
+    public static function pickupLabel(array $row): string {
+        return CCReturnsRules::pickup_text($row['pickup_date'] ?? '', $row['pickup_time_from'] ?? '', $row['pickup_time_to'] ?? '');
+    }
+
     // ── Submit / decide ──────────────────────────────────────────────────
 
     /**
@@ -204,48 +219,16 @@ class CCReturnsService {
         if (!in_array($method, $this->settings->enabledMethods(), true)) {
             return self::fail_result('method_unavailable', 'Η επιλεγμένη μέθοδος επιστροφής δεν είναι διαθέσιμη.');
         }
-        $items = $this->validateItems($order, $data['items'] ?? []);
-        if (isset($items['error'])) {
-            return self::fail_result($items['code'], $items['error']);
+        $row = $this->buildRequest($order, $method, $data);
+        if (isset($row['error'])) {
+            return self::fail_result($row['code'], $row['error']);
         }
-        $reason = trim(strip_tags(html_entity_decode((string)($data['reason'] ?? ''), ENT_QUOTES, 'UTF-8')));
-        if (self::len($reason) > self::REASON_MAX) {
-            return self::fail_result('reason_length', 'Η αιτιολογία μπορεί να έχει έως 500 χαρακτήρες.');
-        }
-        $name = trim((string)preg_replace('/\s+/u', ' ', strip_tags(html_entity_decode((string)($data['name'] ?? ''), ENT_QUOTES, 'UTF-8'))));
-        if ($name === '') {
-            return self::fail_result('missing_name', 'Συμπληρώστε το ονοματεπώνυμο του αποστολέα.');
-        }
-        $phone = CCReturnsRules::pick_phone($method, (string)($data['mobile'] ?? ''), (string)($data['landline'] ?? ''));
-        if (isset($phone['error'])) {
-            return self::fail_result('phone', $phone['error']);
-        }
-        $locker_size = '';
-        if ($method === CCReturnsRules::METHOD_BOXNOW) {
-            $locker_size = (string)($data['locker_size'] ?? '');
-            if (CCReturnsRules::locker_reference($locker_size) === '') {
-                return self::fail_result('locker_size', 'Επιλέξτε μέγεθος BOX NOW locker (Μικρό, Μεσαίο ή Μεγάλο).');
-            }
-        }
-
-        $c = $this->customerDefaults($order);
-        $ship = $this->shipment((int)$order['order_id']);
-        $point = trim((string)($ship['pickup_point'] ?? ''));
-        $row = [
-            'request_uid'           => $uid,
-            'reference_token'       => self::newToken(),
-            'order_id'              => (int)$order['order_id'],
-            'customer_id'           => $customer_id,
-            'status'                => CCReturnsRules::ST_PENDING,
-            'method'                => $method,
-            'items'                 => $items,
-            'reason'                => $reason,
-            'original_awb'          => trim((string)($ship['voucher_number'] ?? '')),
-            'original_shipper_code' => $point !== '' ? $point : $this->setting('billing_account'),
-            'shipper_details'       => ['name' => $name, 'address' => $c['address'], 'city' => $c['city'], 'postcode' => $c['postcode'], 'phone' => $phone['phone'], 'email' => $c['email']],
-            'locker_size'           => $locker_size,
-            'locker_reference'      => CCReturnsRules::locker_reference($locker_size),
-        ];
+        $row = array_merge([
+            'request_uid'     => $uid,
+            'reference_token' => self::newToken(),
+            'customer_id'     => $customer_id,
+            'status'          => CCReturnsRules::ST_PENDING,
+        ], $row);
         $id = $this->repo->insert($row);
         if (!is_int($id)) {
             // A parallel request with the same uid won the race.
@@ -271,6 +254,7 @@ class CCReturnsService {
 
         if ($this->settings->requireApproval()) {
             $this->notify('received', $id);
+            $this->notify('submitted', $id); // email «Νέο αίτημα επιστροφής» to the shop
             return ['ok' => true, 'id' => $id];
         }
         // Without approval: create first. On success the customer only gets "created", otherwise "received".
@@ -281,7 +265,152 @@ class CCReturnsService {
         if (!$fresh || $fresh['status'] !== CCReturnsRules::ST_CREATED) {
             $this->notify('received', $id);
         }
+        $this->notify('submitted', $id);
         return ['ok' => true, 'id' => $id];
+    }
+
+    /**
+     * A return the shop creates (admin): none of the customer's rules (status, deadline, enabled
+     * methods) - an active voucher is enough. Stored directly as approved (origin shop) and created at
+     * once; no "received" email. $data as for submit() + notify ('1' = "created" email to the customer).
+     * @return array ['ok' => true, 'id' => int] (also when the creation failed - see its status) | error
+     */
+    public function shopCreate(array $order, int $admin_id, array $data): array {
+        $uid = (string)($data['request_uid'] ?? '');
+        if (preg_match('/^[A-Za-z0-9_-]{8,32}$/D', $uid) !== 1) {
+            return self::fail_result('invalid_request', 'Μη έγκυρο αίτημα. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.');
+        }
+        if (!$order) {
+            return self::fail_result('not_found', 'Η παραγγελία δεν βρέθηκε.');
+        }
+        $customer_id = (int)($order['customer_id'] ?? 0);
+        $existing = $this->existingForUid($uid, $order, $customer_id);
+        if ($existing !== null) {
+            return $existing;
+        }
+        if (!$this->hasActiveAwb((int)$order['order_id'])) {
+            return self::fail_result('no_shipment', 'Η παραγγελία δεν έχει ενεργή αποστολή Courier Center (AWB)· η επιστροφή δημιουργείται μόνο για παραγγελίες που στάλθηκαν με Courier Center και δεν ακυρώθηκαν.');
+        }
+        $method = (string)($data['method'] ?? '');
+        if (!in_array($method, CCReturnsRules::METHODS_ORDER, true)) {
+            return self::fail_result('method_unavailable', 'Η επιλεγμένη μέθοδος επιστροφής δεν είναι διαθέσιμη.');
+        }
+        $row = $this->buildRequest($order, $method, $data);
+        if (isset($row['error'])) {
+            return self::fail_result($row['code'], $row['error']);
+        }
+        $row = array_merge([
+            'request_uid'     => $uid,
+            'reference_token' => self::newToken(),
+            'customer_id'     => $customer_id,
+            'status'          => CCReturnsRules::ST_APPROVED,
+            'origin'          => 'shop',
+            'notify_customer' => empty($data['notify']) ? 0 : 1,
+            'decided_by'      => $admin_id,
+            'approved_at'     => CCReturnsRepo::now(),
+        ], $row);
+        $id = $this->repo->insert($row);
+        if (!is_int($id)) {
+            $existing = $this->existingForUid($uid, $order, $customer_id);
+            if ($existing !== null) {
+                return $existing;
+            }
+            if ($id === 'duplicate') {
+                $row['reference_token'] = self::newToken();
+                $id = $this->repo->insert($row);
+            }
+            if (!is_int($id)) {
+                $this->log('error', sprintf('Επιστροφή: αποτυχία καταχώρισης από το κατάστημα (παραγγελία %d, %s): %s', $row['order_id'], $method, $id));
+                return self::fail_result('db', 'Δεν ήταν δυνατή η καταχώριση της επιστροφής. Δοκιμάστε ξανά.');
+            }
+        }
+        $this->log('info', sprintf('Επιστροφή #%d: δημιουργία από το κατάστημα (παραγγελία %d, %s, χρήστης %d).', $id, $row['order_id'], $method, $admin_id));
+        $this->note($row, sprintf('↩️ Επιστροφή #%d από το κατάστημα (%s).', $id, CCReturnsRules::method_label($method)));
+        $this->create($id); // the outcome shows in the request's status
+        return ['ok' => true, 'id' => $id];
+    }
+
+    /**
+     * Shared checks (items, reason, name, phone, BOX NOW, Pickup) for the customer and the shop.
+     * @return array the row fields without request_uid / reference_token / customer_id / status | ['code', 'error']
+     */
+    private function buildRequest(array $order, string $method, array $data): array {
+        $items = $this->validateItems($order, $data['items'] ?? []);
+        if (isset($items['error'])) {
+            return $items;
+        }
+        $reason = trim(strip_tags(html_entity_decode((string)($data['reason'] ?? ''), ENT_QUOTES, 'UTF-8')));
+        if (self::len($reason) > self::REASON_MAX) {
+            return ['code' => 'reason_length', 'error' => 'Η αιτιολογία μπορεί να έχει έως 500 χαρακτήρες.'];
+        }
+        $name = self::line($data['name'] ?? '');
+        if ($name === '') {
+            return ['code' => 'missing_name', 'error' => 'Συμπληρώστε το ονοματεπώνυμο του αποστολέα.'];
+        }
+        $phone = CCReturnsRules::pick_phone($method, (string)($data['mobile'] ?? ''), (string)($data['landline'] ?? ''));
+        if (isset($phone['error'])) {
+            return ['code' => 'phone', 'error' => $phone['error']];
+        }
+        $locker_size = '';
+        if ($method === CCReturnsRules::METHOD_BOXNOW) {
+            $locker_size = (string)($data['locker_size'] ?? '');
+            if (CCReturnsRules::locker_reference($locker_size) === '') {
+                return ['code' => 'locker_size', 'error' => 'Επιλέξτε μέγεθος BOX NOW locker (Μικρό, Μεσαίο ή Μεγάλο).'];
+            }
+        }
+        $c = $this->customerDefaults($order);
+        $pickup = $method === CCReturnsRules::METHOD_PICKUP;
+        $pk = ['address' => $c['address'], 'city' => $c['city'], 'postcode' => $c['postcode'], 'date' => null, 'from' => null, 'to' => null, 'notes' => ''];
+        if ($pickup) {
+            $pk['address'] = self::line($data['pickup_address'] ?? '');
+            $pk['city'] = self::line($data['pickup_city'] ?? '');
+            $pk['postcode'] = (string)preg_replace('/\s+/', '', self::line($data['pickup_postcode'] ?? ''));
+            if ($pk['address'] === '') {
+                return ['code' => 'missing_address', 'error' => 'Συμπληρώστε τη διεύθυνση παραλαβής.'];
+            }
+            if ($pk['city'] === '') {
+                return ['code' => 'missing_city', 'error' => 'Συμπληρώστε την πόλη της διεύθυνσης παραλαβής.'];
+            }
+            if (preg_match('/^\d{5}$/D', $pk['postcode']) !== 1) {
+                return ['code' => 'invalid_postcode', 'error' => 'Ο ΤΚ της διεύθυνσης παραλαβής πρέπει να έχει 5 ψηφία.'];
+            }
+            $date = self::line($data['pickup_date'] ?? '');
+            $err = CCReturnsRules::pickup_date_error($date, CCReturnsRules::now_local());
+            if ($err !== '') {
+                return ['code' => 'pickup_date', 'error' => $err];
+            }
+            $from = self::line($data['pickup_time_from'] ?? '');
+            $to = self::line($data['pickup_time_to'] ?? '');
+            $err = CCReturnsRules::pickup_window_error($from, $to);
+            if ($err !== '') {
+                return ['code' => 'pickup_window', 'error' => $err];
+            }
+            $notes = trim(strip_tags(html_entity_decode((string)($data['courier_notes'] ?? ''), ENT_QUOTES, 'UTF-8')));
+            if (self::len($notes) > CCReturnsRules::COURIER_NOTES_MAX) {
+                return ['code' => 'notes_length', 'error' => 'Οι οδηγίες για τον courier μπορούν να έχουν έως 200 χαρακτήρες.'];
+            }
+            $pk['date'] = $date;
+            $pk['from'] = $from !== '' ? $from : null;
+            $pk['to'] = $to !== '' ? $to : null;
+            $pk['notes'] = $notes;
+        }
+        $ship = $this->shipment((int)$order['order_id']);
+        $point = trim((string)($ship['pickup_point'] ?? ''));
+        return [
+            'order_id'              => (int)$order['order_id'],
+            'method'                => $method,
+            'items'                 => $items,
+            'reason'                => $reason,
+            'original_awb'          => trim((string)($ship['voucher_number'] ?? '')),
+            'original_shipper_code' => $point !== '' ? $point : $this->setting('billing_account'),
+            'shipper_details'       => ['name' => $name, 'address' => $pk['address'], 'city' => $pk['city'], 'postcode' => $pk['postcode'],
+                'phone' => $phone['phone'], 'email' => $c['email'], 'courier_notes' => $pk['notes']],
+            'pickup_date'           => $pk['date'],
+            'pickup_time_from'      => $pk['from'],
+            'pickup_time_to'        => $pk['to'],
+            'locker_size'           => $locker_size,
+            'locker_reference'      => CCReturnsRules::locker_reference($locker_size),
+        ];
     }
 
     /** pending_approval → approved → create(). */
@@ -410,14 +539,25 @@ class CCReturnsService {
         if (!CCReturnsRules::codes_equal($point, $row['original_shipper_code'])) {
             $this->log('warning', sprintf('Επιστροφή #%d (παραγγελία %d, %s): ο αποστολέας της αρχικής στο API (%s) διαφέρει από το σημείο της παραγγελίας (%s)· ισχύει του API.', $row['id'], $row['order_id'], $row['method'], $point, $row['original_shipper_code']));
         }
+        // Accounts and billing; for Pickup a date that has passed → the next working day (same window)
+        $main = $this->setting('billing_account');
         $mapped = $this->settings->returnAccountFor($point);
         $fields = [
             'original_shipper_code' => $point,
             'return_account_code'   => $mapped !== '' ? $mapped : $point,
-            'requestor_account'     => $this->setting('billing_account'),
+            'requestor_account'     => $main,
         ];
+        if ($row['method'] === CCReturnsRules::METHOD_PICKUP) {
+            $next = CCReturnsRules::next_working_day(CCReturnsRules::now_local());
+            if ((string)$row['pickup_date'] < $next) {
+                $fields['pickup_date'] = $next;
+                $this->log('info', sprintf('Επιστροφή #%d: η ημερομηνία παραλαβής μετακινήθηκε από %s σε %s.', $row['id'], (string)$row['pickup_date'], $next));
+            }
+        }
         $this->repo->update($row['id'], $fields);
         $row = array_merge($row, $fields);
+        $row['bill_to'] = CCReturnsRules::bill_to(CCPickupPoints::fromConfig($this->config)->get($point), $main);
+        $this->log('info', sprintf('Επιστροφή #%d: χρέωση %s (σημείο %s, λογαριασμός επιστροφών %s).', $row['id'], $row['bill_to'], $point, $row['return_account_code']));
 
         $payload = CCReturnPayload::build($row, [
             'UserAlias'       => $this->setting('user_alias'),
@@ -663,6 +803,12 @@ class CCReturnsService {
     }
 
     private function notify(string $event, int $id): void {
+        if ($this->notifier !== null && $event !== 'submitted') {
+            $row = $this->repo->get($id);
+            if ($row && !self::customerMailAllowed($event, $row)) {
+                return;
+            }
+        }
         if ($this->notifier !== null) {
             try {
                 call_user_func($this->notifier, $event, $id);
@@ -670,6 +816,19 @@ class CCReturnsService {
                 $this->log('error', sprintf('Επιστροφή #%d: αποτυχία ειδοποίησης %s — %s', $id, $event, self::clip($e->getMessage())));
             }
         }
+    }
+
+    /** A shop return without "email the customer" sends no customer email, and never "rejected". */
+    public static function customerMailAllowed(string $event, array $row): bool {
+        if ((int)($row['notify_customer'] ?? 1) === 0) {
+            return false;
+        }
+        return !($event === 'rejected' && ($row['origin'] ?? '') === 'shop');
+    }
+
+    /** One line of text: no tags, whitespace collapsed. */
+    private static function line($v): string {
+        return trim((string)preg_replace('/\s+/u', ' ', strip_tags(html_entity_decode(is_scalar($v) ? (string)$v : '', ENT_QUOTES, 'UTF-8'))));
     }
 
     /** Only request / order ids, method and API error text - never customer data or credentials. */

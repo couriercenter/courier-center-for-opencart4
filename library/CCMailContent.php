@@ -2,7 +2,7 @@
 /**
  * Customer email content of the Courier Center extension (shared by OpenCart 3 and 4, PHP 7.2+):
  * - the tracking block added to the shop's own order emails (AWB + tracking link)
- * - the 3 returns emails (received / created / rejected)
+ * - the 3 returns emails (received / created / rejected) and «Νέο αίτημα επιστροφής» to the shop
  * Sending stays in the platform code (OpenCart 3 and 4 have different Mail classes).
  */
 
@@ -100,6 +100,51 @@ class CCMailContent {
         $text = $heading . "\n\n" . $hello . "\n\n" . implode("\n", $lines) . "\n"
             . ($event === 'created' && trim($instructions) !== '' ? "\n" . $instructions . "\n" : '')
             . "\n" . sprintf('Παραγγελία #%d', $n) . "\n- " . implode("\n- ", $items) . "\n\nΤρόπος επιστροφής: " . $method . "\n";
+        return ['subject' => $subject, 'html' => $html, 'text' => $text];
+    }
+
+    /**
+     * Email «Νέο αίτημα επιστροφής» to the shop (every customer request, with or without approval).
+     * @param array $order order row (firstname, lastname, email, order_id)
+     * @return array ['subject', 'html', 'text']
+     */
+    public static function adminNewReturnEmail(array $row, array $order, string $requests_url, string $order_url): array {
+        $n = (int)($order['order_id'] ?? $row['order_id'] ?? 0);
+        $name = trim(html_entity_decode((string)($order['firstname'] ?? '') . ' ' . (string)($order['lastname'] ?? ''), ENT_QUOTES, 'UTF-8'));
+        $lines = [sprintf('Ο πελάτης %s ζήτησε επιστροφή για την παραγγελία #%d.', $name !== '' ? $name : (string)($order['email'] ?? ''), $n)];
+        foreach ((array)($row['items'] ?? []) as $line) {
+            $lines[] = '• ' . (string)($line['name'] ?? 'Προϊόν') . ' × ' . (int)($line['qty'] ?? 0);
+        }
+        $method = (string)($row['method'] ?? '');
+        $lines[] = 'Τρόπος επιστροφής: ' . CCReturnsRules::method_label($method);
+        if ($method === CCReturnsRules::METHOD_PICKUP) {
+            $label = CCReturnsRules::pickup_text($row['pickup_date'] ?? '', $row['pickup_time_from'] ?? '', $row['pickup_time_to'] ?? '');
+            if ($label !== '') {
+                $lines[] = 'Παραλαβή: ' . $label;
+            }
+        }
+        if (trim((string)($row['reason'] ?? '')) !== '') {
+            $lines[] = 'Αιτιολογία: ' . trim((string)$row['reason']);
+        }
+        $status = (string)($row['status'] ?? '');
+        if ($status === CCReturnsRules::ST_PENDING) {
+            $lines[] = 'Περιμένει την έγκρισή σας.';
+        } elseif (trim((string)($row['return_awb'] ?? '')) !== '') {
+            $lines[] = 'Η αποστολή επιστροφής δημιουργήθηκε αυτόματα. Αριθμός αποστολής επιστροφής: ' . $row['return_awb'];
+        } else {
+            $lines[] = 'Κατάσταση: ' . CCReturnsRules::status_label($status);
+        }
+        $subject = sprintf('Νέο αίτημα επιστροφής για την παραγγελία #%d', $n);
+        $heading = 'Νέο αίτημα επιστροφής';
+        $html = '<div style="font-family:Arial,sans-serif; font-size:14px; color:#2c3338; max-width:600px;">'
+            . '<h2 style="font-size:18px; color:#1d2327;">' . self::e($heading) . '</h2><p>';
+        foreach ($lines as $i => $l) {
+            $html .= ($i ? '<br>' : '') . self::e($l);
+        }
+        $html .= '</p><p><a href="' . self::e($requests_url) . '" style="color:#2271b1;">Αιτήματα επιστροφής</a>'
+            . ($order_url !== '' ? ' · <a href="' . self::e($order_url) . '" style="color:#2271b1;">Παραγγελία #' . $n . '</a>' : '') . '</p></div>';
+        $text = $heading . "\n\n" . implode("\n", $lines) . "\n\nΑιτήματα επιστροφής: " . $requests_url . "\n"
+            . ($order_url !== '' ? 'Παραγγελία: ' . $order_url . "\n" : '');
         return ['subject' => $subject, 'html' => $html, 'text' => $text];
     }
 

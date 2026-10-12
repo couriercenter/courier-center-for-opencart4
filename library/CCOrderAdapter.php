@@ -46,6 +46,27 @@ class CCOrderAdapter {
         return '';
     }
 
+    /**
+     * Value of one of the order's address custom fields (OpenCart custom_field_id), shipping address
+     * first, then the payment address; '' when empty. Used for a separate "street number" field.
+     */
+    public function get_custom_field_value($custom_field_id): string {
+        $id = trim((string)$custom_field_id);
+        if ($id === '') {
+            return '';
+        }
+        foreach (['shipping_custom_field', 'payment_custom_field'] as $key) {
+            $cf = $this->order[$key] ?? [];
+            if (!is_array($cf)) {
+                $cf = json_decode((string)$cf, true);
+            }
+            if (is_array($cf) && isset($cf[$id]) && is_scalar($cf[$id]) && trim((string)$cf[$id]) !== '') {
+                return trim(html_entity_decode((string)$cf[$id], ENT_QUOTES, 'UTF-8'));
+            }
+        }
+        return '';
+    }
+
     public function get_id(): int {
         return (int)($this->order['order_id'] ?? 0);
     }

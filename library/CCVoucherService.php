@@ -79,6 +79,7 @@ class CCVoucherService {
             'shipper_city'     => (string)$this->setting('shipper_city'),
             'shipper_phone'    => (string)$this->setting('shipper_phone'),
             'shipper_station'  => CCCityScope::get_station_for_postcode($postcode),
+            'street_number_field' => (string)$this->setting('street_number_field'),
         ];
     }
 
@@ -236,8 +237,81 @@ class CCVoucherService {
         return new CCOrderHistory($this->db, $this->prefix);
     }
 
-    public function tracker() {
-        return new CCStatusTracker($this->db, $this->prefix, $this->api(), (int)$this->setting('auto_complete_status_id'), $this->statusSets());
+    /**
+     * @param callable|null $on_completed function (int $order_id): sends the «Η παραγγελία ολοκληρώθηκε» email
+     */
+    public function tracker($on_completed = null) {
+        return new CCStatusTracker($this->db, $this->prefix, $this->api(), $this->autoCompleteStatusId(), $this->statusSets(), $this->autoCompleteNotify() ? $on_completed : null);
+    }
+
+    /**
+     * The status a delivered order moves to. Always on, like WooCommerce (it completes delivered orders):
+     * unset = the shop's first "complete" status; "0" = switched off by the merchant; otherwise that status.
+     */
+    public function autoCompleteStatusId() {
+        $v = trim((string)$this->setting('auto_complete_status_id'));
+        if ($v === '') {
+            $sets = $this->statusSets();
+            return $sets['complete'] ? (int)reset($sets['complete']) : 0;
+        }
+        return max(0, (int)$v);
+    }
+
+    /**
+     * The «Η παραγγελία ολοκληρώθηκε» email of an order (the platform delivers it).
+     * @return array ['to', 'subject', 'html', 'text'] | [] when the order has no email address
+     */
+    public function completedEmail($order_id) {
+        $order_id = (int)$order_id;
+        $q = $this->db->query("SELECT `order_id`, `firstname`, `email` FROM `" . $this->prefix . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
+        if (!$q->num_rows || trim((string)$q->row['email']) === '') {
+            return [];
+        }
+        $items = $this->db->query("SELECT `name`, `quantity` FROM `" . $this->prefix . "order_product` WHERE `order_id` = '" . $order_id . "' ORDER BY `order_product_id`")->rows;
+        $shipment = $this->getShipment($order_id);
+        foreach (['voucher_number', 'tracking_number', 'boxnow_parcel_id'] as $k) {
+            if (isset($shipment[$k])) {
+                $shipment[$k] = html_entity_decode((string)$shipment[$k], ENT_QUOTES, 'UTF-8');
+            }
+        }
+        $template = html_entity_decode((string)$this->setting('tracking_url'), ENT_QUOTES, 'UTF-8');
+        if ((string)$this->setting('email_tracking_enabled') === '0') {
+            $shipment = []; // the merchant switched the tracking block off
+        }
+        $m = CCMailContent::orderCompletedEmail($q->row, $items, $shipment, $template);
+        return ['to' => trim((string)$q->row['email'])] + $m;
+    }
+
+    /** Email the customer when a delivered order is completed automatically (default yes). */
+    public function autoCompleteNotify() {
+        return trim((string)$this->setting('auto_complete_notify')) !== '0';
+    }
+
+    /**
+     * «Shipping methods the plugin manages»: at least one. An empty submission keeps the saved list
+     * (and says so), exactly like the WooCommerce settings.
+     * @param mixed $posted the posted codes
+     * @param mixed $saved  the currently saved codes
+     * @return array ['codes' => string[], 'warning' => string]
+     */
+    public static function sanitizeHandled($posted, $saved) {
+        $clean = [];
+        foreach (is_array($posted) ? $posted : [] as $code) {
+            $code = trim((string)$code);
+            if ($code !== '' && !in_array($code, $clean, true)) {
+                $clean[] = $code;
+            }
+        }
+        if ($clean) {
+            return ['codes' => $clean, 'warning' => ''];
+        }
+        $keep = [];
+        foreach (is_array($saved) ? $saved : [] as $code) {
+            if (trim((string)$code) !== '') {
+                $keep[] = trim((string)$code);
+            }
+        }
+        return ['codes' => $keep, 'warning' => 'Δεν έχει επιλεγεί καμία μέθοδος αποστολής στο πεδίο «Μέθοδοι αποστολής που διαχειρίζεται το plugin». Επιλέξτε τουλάχιστον μία.'];
     }
 
     /**

@@ -805,7 +805,7 @@ class CCReturnsService {
     private function notify(string $event, int $id): void {
         if ($this->notifier !== null && $event !== 'submitted') {
             $row = $this->repo->get($id);
-            if ($row && !self::customerMailAllowed($event, $row)) {
+            if ($row && (!self::customerMailAllowed($event, $row) || !$this->settings->customerEmailEnabled($event))) {
                 return;
             }
         }
@@ -816,6 +816,43 @@ class CCReturnsService {
                 $this->log('error', sprintf('Επιστροφή #%d: αποτυχία ειδοποίησης %s — %s', $id, $event, self::clip($e->getMessage())));
             }
         }
+    }
+
+    /**
+     * The emails to send for an event (the platform only delivers them): received / created / rejected to the
+     * order's customer, submitted = «Νέο αίτημα επιστροφής» to the shop's recipients. The platform-independent
+     * part of the old sender, so the cron job from the command line can send them too.
+     *
+     * @param array  $links ['requests' => admin URL of the returns page, 'order' => admin URL of an order ending with "order_id="]
+     *                      (they differ in OpenCart 3 and 4; the links of the shop email, '' = none)
+     * @param string $shop_email the shop's own address (default recipient)
+     * @return array[] each ['to', 'subject', 'html', 'text']
+     */
+    public function mailsFor(string $event, int $id, array $links = [], string $shop_email = ''): array {
+        $row = $this->repo->get($id);
+        if (!$row) {
+            return [];
+        }
+        $order = $this->getOrder((int)$row['order_id']);
+        if ($event === 'submitted') {
+            if (!$this->settings->adminNotify()) {
+                return [];
+            }
+            $requests = (string)($links['requests'] ?? '');
+            $order_url = isset($links['order']) && $links['order'] !== '' ? $links['order'] . (int)$row['order_id'] : '';
+            $m = CCMailContent::adminNewReturnEmail($row, $order, $requests, $order_url);
+            $out = [];
+            foreach ($this->settings->adminEmails($shop_email) as $to) {
+                $out[] = ['to' => $to] + $m;
+            }
+            return $out;
+        }
+        $to = trim((string)($order['email'] ?? ''));
+        if ($to === '') {
+            return [];
+        }
+        $m = CCMailContent::returnEmail($event, $row, $order, $this->settings->instructionsFor($row['method']));
+        return $m ? [['to' => $to] + $m] : [];
     }
 
     /** A shop return without "email the customer" sends no customer email, and never "rejected". */

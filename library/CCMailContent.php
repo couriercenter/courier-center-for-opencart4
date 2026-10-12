@@ -104,6 +104,40 @@ class CCMailContent {
     }
 
     /**
+     * Customer email when a delivered order is completed automatically (WooCommerce's «Completed order»).
+     * @param array $order    order row (order_id, firstname, total, currency_code ...)
+     * @param array $items    [['name' => ..., 'quantity' => ...], ...]
+     * @param array $shipment cc_shipments row (for the tracking block)
+     * @return array ['subject', 'html', 'text']
+     */
+    public static function orderCompletedEmail(array $order, array $items, array $shipment, string $tracking_template): array {
+        $n = (int)($order['order_id'] ?? 0);
+        $first = trim(html_entity_decode((string)($order['firstname'] ?? ''), ENT_QUOTES, 'UTF-8'));
+        $hello = $first !== '' ? sprintf('Γεια σας %s,', $first) : 'Γεια σας,';
+        $heading = 'Η παραγγελία σας ολοκληρώθηκε';
+        $line = sprintf('Η παραγγελία #%d παραδόθηκε. Σας ευχαριστούμε!', $n);
+        $lines = [];
+        foreach ($items as $it) {
+            $lines[] = html_entity_decode((string)($it['name'] ?? 'Προϊόν'), ENT_QUOTES, 'UTF-8') . ' × ' . (int)($it['quantity'] ?? 0);
+        }
+        $html = '<div style="font-family:Arial,sans-serif; font-size:14px; color:#2c3338; max-width:600px;">'
+            . '<h2 style="font-size:18px; color:#1d2327;">' . self::e($heading) . '</h2>'
+            . '<p>' . self::e($hello) . '</p><p>' . self::e($line) . '</p>'
+            . self::trackingHtml($shipment, $tracking_template);
+        if ($lines) {
+            $html .= '<ul>';
+            foreach ($lines as $l) {
+                $html .= '<li>' . self::e($l) . '</li>';
+            }
+            $html .= '</ul>';
+        }
+        $html .= '</div>';
+        $text = $heading . "\n\n" . $hello . "\n\n" . $line . "\n\n" . self::trackingText($shipment, $tracking_template)
+            . ($lines ? "\n- " . implode("\n- ", $lines) . "\n" : '');
+        return ['subject' => sprintf('Η παραγγελία #%d ολοκληρώθηκε', $n), 'html' => $html, 'text' => $text];
+    }
+
+    /**
      * Email «Νέο αίτημα επιστροφής» to the shop (every customer request, with or without approval).
      * @param array $order order row (firstname, lastname, email, order_id)
      * @return array ['subject', 'html', 'text']

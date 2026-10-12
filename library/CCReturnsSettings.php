@@ -18,7 +18,8 @@ class CCReturnsSettings {
 
     /** The setting keys (without prefix) the settings form posts. */
     const KEYS = ['enabled', 'require_approval', 'window_days', 'method_dropoff', 'method_pickup', 'method_boxnow', 'accounts', 'weight',
-        'dropoff_instructions', 'pickup_instructions', 'boxnow_instructions', 'admin_notify', 'admin_emails'];
+        'dropoff_instructions', 'pickup_instructions', 'boxnow_instructions', 'admin_notify', 'admin_emails',
+        'email_received', 'email_created', 'email_rejected'];
 
     /** @var object */
     private $config;
@@ -100,6 +101,11 @@ class CCReturnsSettings {
             return $this->pickupInstructions();
         }
         return $this->dropoffInstructions();
+    }
+
+    /** Customer email of an event (received | created | rejected) is on (default yes) - like WooCommerce's Emails settings. */
+    public function customerEmailEnabled(string $event): bool {
+        return $this->flag('email_' . $event, '1');
     }
 
     /** Email «Νέο αίτημα επιστροφής» to the shop (default on). */
@@ -213,7 +219,7 @@ class CCReturnsSettings {
      */
     public static function sanitizePost(array &$post, array $known_codes): array {
         // A field the form did not send gets the safe default (approval on, Drop Off on), never "off".
-        foreach (['enabled' => '0', 'require_approval' => '1', 'method_dropoff' => '1', 'method_pickup' => '0', 'method_boxnow' => '0', 'admin_notify' => '1'] as $f => $default) {
+        foreach (['enabled' => '0', 'require_approval' => '1', 'method_dropoff' => '1', 'method_pickup' => '0', 'method_boxnow' => '0', 'admin_notify' => '1', 'email_received' => '1', 'email_created' => '1', 'email_rejected' => '1'] as $f => $default) {
             if (!array_key_exists(self::P . $f, $post)) {
                 $post[self::P . $f] = $default;
                 continue;

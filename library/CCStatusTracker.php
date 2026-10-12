@@ -28,6 +28,8 @@ class CCStatusTracker {
     private $active_statuses;
     /** @var int[] the shop's "complete" statuses */
     private $complete_statuses;
+    /** @var callable|null function (int $order_id): the customer email «Η παραγγελία ολοκληρώθηκε» */
+    private $on_completed;
 
     /**
      * @param array $status_sets ['active' => int[], 'complete' => int[]] (CCVoucherService::statusSets()).
@@ -35,7 +37,8 @@ class CCStatusTracker {
      *                           cancelled / refunded order is never completed; the cron skips orders
      *                           that are neither active nor complete.
      */
-    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0, array $status_sets = []) {
+    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0, array $status_sets = [], $on_completed = null) {
+        $this->on_completed = $on_completed;
         $this->db = $db;
         $this->prefix = $prefix;
         $this->api = $api;
@@ -149,6 +152,15 @@ class CCStatusTracker {
         // Also when the code did not change: a delivered order that stayed in an active status
         // (e.g. auto-complete was off at the time) is completed on the next refresh.
         $out['completed'] = $this->maybe_auto_complete($order_id, $code, $label);
+        // The customer is told only when THIS refresh recorded the delivery (as in WooCommerce): an order that was
+        // left behind and is completed later, with the delivery already stored, is completed silently.
+        if ($out['completed'] && $out['changed'] && $this->on_completed !== null) {
+            try {
+                call_user_func($this->on_completed, $order_id);
+            } catch (\Throwable $e) {
+                // an email problem never breaks the status update
+            }
+        }
         return $out;
     }
 

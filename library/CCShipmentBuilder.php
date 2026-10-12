@@ -217,13 +217,35 @@ class CCShipmentBuilder {
         return $v !== '' ? $v : (string)$this->settings['billing_account'];
     }
 
-    /** The customer's checkout note (whitespace collapsed, max 200 chars), else "Order #id". */
+    /**
+     * Voucher comments: only the customer's checkout note (whitespace collapsed, max 200 chars). The
+     * order number is not repeated here - it already travels in Reference1 (OC-<id>), as in WooCommerce.
+     */
     private function build_comments(): string {
         $note = trim((string)preg_replace('/\s+/u', ' ', $this->order->get_customer_note()));
         if ($note === '') {
-            return 'Order #' . $this->order->get_id();
+            return '';
         }
         return function_exists('mb_substr') ? mb_substr($note, 0, 200, 'UTF-8') : substr($note, 0, 200);
+    }
+
+    /**
+     * The consignee address as it is sent: address 1 + address 2, plus the street number when the shop keeps
+     * it in a separate address custom field (setting street_number_field = custom_field_id) and it is not
+     * already a whole word of the address ("15" is not found in "Βενιζέλου 155").
+     */
+    public function get_consignee_address(): string {
+        $address = trim($this->order->get_billing_address_1() . ' ' . $this->order->get_billing_address_2());
+        $number = $this->order->get_custom_field_value($this->settings['street_number_field'] ?? '');
+        if ($number !== '' && !preg_match('/(^|\s)' . preg_quote($number, '/') . '(\s|$)/u', $address)) {
+            $address = trim($address . ' ' . $number);
+        }
+        return $address;
+    }
+
+    /** "Οδός 5, Πόλη 12345": the address as it will be sent (for the order panel). */
+    public function get_consignee_address_preview(): string {
+        return trim($this->get_consignee_address() . ', ' . $this->order->get_billing_city() . ' ' . $this->order->get_billing_postcode(), ', ');
     }
 
     private function build_consignee(): array {
@@ -232,10 +254,7 @@ class CCShipmentBuilder {
         $name    = trim($first . ' ' . $last);
         $company = $this->order->get_billing_company() ?: $name;
 
-        $address = trim(
-            $this->order->get_billing_address_1() . ' ' .
-            $this->order->get_billing_address_2()
-        );
+        $address = $this->get_consignee_address();
 
         $country = $this->order->get_billing_country() ?: 'GR';
 

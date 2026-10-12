@@ -145,7 +145,9 @@ class CourierCenterUpdate extends \Opencart\System\Engine\Controller {
      * it never hits the network on the hot path more than twice a day.
      */
     public function notice(string &$route, array &$args, mixed &$output): void {
-        $this->ccPseudoCronTick();
+        if (method_exists($this, 'ccPseudoCronTick')) { // (files are swapped one by one during an update)
+            $this->ccPseudoCronTick();
+        }
         // Files updated (one-click update or by hand): tables, events and permissions follow, once.
         try {
             \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Setup::repairIfUpdated($this->db, DB_PREFIX);

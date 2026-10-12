@@ -93,16 +93,22 @@ class CCOc4Setup {
         }
         self::ensureCronKey($db, $prefix);
         self::setState($db, $prefix, 'installed_version', self::version());
+        self::setState($db, $prefix, 'installed_build', self::eventsSignature());
         $done[] = 'version ' . self::version();
         return $done;
     }
 
-    /** repair() when the files are newer than the last repair (update without re-install). */
+    /** repair() when the files are newer than the last repair (update without re-install, or a new zip of the same version). */
     public static function repairIfUpdated($db, string $prefix): array {
-        if (self::getState($db, $prefix, 'installed_version') === self::version()) {
+        if (self::getState($db, $prefix, 'installed_version') === self::version() && self::getState($db, $prefix, 'installed_build') === self::eventsSignature()) {
             return [];
         }
         return self::repair($db, $prefix);
+    }
+
+    /** Changes when the event list changes. */
+    public static function eventsSignature(): string {
+        return md5(json_encode(self::events()));
     }
 
     public static function version(): string {

@@ -89,16 +89,8 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
             return;
         }
 
-        $sel = $this->session->data['cc_boxnow'] ?? [];
-        if (empty($sel['selected'])) {
-            return;
-        }
-        // Only for an order with a shipping method that offers BOX NOW (the choice may be left from another method).
-        $allowed = $this->config->get('shipping_courier_center_boxnow_shipping_methods');
-        $allowed = (is_array($allowed) && $allowed) ? array_map('strval', $allowed) : ['courier_center'];
-        $sm = $args[0]['shipping_method'] ?? [];
-        $code = is_array($sm) ? (string)($sm['code'] ?? '') : (string)($args[0]['shipping_code'] ?? '');
-        if (!in_array(explode('.', $code)[0], $allowed, true)) {
+        $fields = $this->selectionFields($args[0] ?? []);
+        if (!$fields) {
             return;
         }
 
@@ -111,20 +103,79 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
         if (!is_array($custom)) {
             $custom = [];
         }
+
+        $this->db->query(
+            "UPDATE `" . DB_PREFIX . "order` SET `custom_field` = '" . $this->db->escape(json_encode(array_merge($custom, $fields))) . "'
+             WHERE `order_id` = '" . (int)$order_id . "'"
+        );
+        // NOT cleared here: OpenCart 4 rewrites the same order (editOrder) whenever the customer changes
+        // something before "Confirm" and keepOnEdit() needs the choice. clearSession() runs on checkout/success.
+    }
+
+    /**
+     * Event catalog/model/checkout/order/editOrder/before: $args[0] = order_id, $args[1] = order data.
+     * editOrder resets custom_field from the customer data. Checkout: write the current choice (it may have
+     * been ticked or unticked meanwhile). Admin edit (api/...): keep the stored choice.
+     */
+    public function keepOnEdit(string &$route, array &$args): void {
+        $order_id = (int)($args[0] ?? 0);
+        if ($order_id <= 0 || !isset($args[1]) || !is_array($args[1])) {
+            return;
+        }
+        $custom = $args[1]['custom_field'] ?? [];
+        if (!is_array($custom)) {
+            $custom = json_decode((string)$custom, true) ?: [];
+        }
+        $keys = ['cc_delivery_mode', 'cc_locker_id', 'cc_locker_code', 'cc_locker_name'];
+
+        if (str_starts_with((string)($this->request->get['route'] ?? ''), 'api/')) {
+            if (isset($custom['cc_delivery_mode'])) {
+                return;
+            }
+            $q = $this->db->query("SELECT `custom_field` FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
+            $old = $q->num_rows ? json_decode((string)$q->row['custom_field'], true) : null;
+            if (!is_array($old) || !isset($old['cc_delivery_mode'])) {
+                return;
+            }
+            foreach ($keys as $k) {
+                $custom[$k] = (string)($old[$k] ?? '');
+            }
+        } else {
+            foreach ($keys as $k) {
+                unset($custom[$k]);
+            }
+            $custom = array_merge($custom, $this->selectionFields($args[1]));
+        }
+        $args[1]['custom_field'] = $custom;
+    }
+
+    /** Event catalog/controller/checkout/success/before: a new order starts without a stale choice. */
+    public function clearSession(string &$route, array &$args): void {
+        unset($this->session->data['cc_boxnow']);
+    }
+
+    /** The session's BOX NOW choice as custom_field keys, or [] (none, or a shipping method without BOX NOW). */
+    private function selectionFields(array $order_data): array {
+        $sel = $this->session->data['cc_boxnow'] ?? [];
+        if (empty($sel['selected'])) {
+            return [];
+        }
+        // Only for an order with a shipping method that offers BOX NOW (the choice may be left from another method).
+        $allowed = $this->config->get('shipping_courier_center_boxnow_shipping_methods');
+        $allowed = (is_array($allowed) && $allowed) ? array_map('strval', $allowed) : ['courier_center'];
+        $sm = $order_data['shipping_method'] ?? [];
+        $code = is_array($sm) ? (string)($sm['code'] ?? '') : (string)($order_data['shipping_code'] ?? '');
+        if (!in_array(explode('.', $code)[0], $allowed, true)) {
+            return [];
+        }
         // Server-side check: "pick" without a locker becomes "auto" (nearest locker), like OpenCart 3.
         $locker_id = trim((string)($sel['locker_id'] ?? ''));
         $pick = (string)$sel['delivery_mode'] === 'pick' && $locker_id !== '';
-        $custom['cc_delivery_mode'] = $pick ? 'pick' : 'auto';
-        $custom['cc_locker_id']     = $pick ? $locker_id : '';
-        $custom['cc_locker_code']   = $pick ? (string)($sel['locker_code'] ?? '') : '';
-        $custom['cc_locker_name']   = $pick ? (string)($sel['locker_name'] ?? '') : '';
-
-        $this->db->query(
-            "UPDATE `" . DB_PREFIX . "order` SET `custom_field` = '" . $this->db->escape(json_encode($custom)) . "'
-             WHERE `order_id` = '" . (int)$order_id . "'"
-        );
-
-        // Clear so a subsequent order doesn't inherit a stale selection.
-        unset($this->session->data['cc_boxnow']);
+        return [
+            'cc_delivery_mode' => $pick ? 'pick' : 'auto',
+            'cc_locker_id'     => $pick ? $locker_id : '',
+            'cc_locker_code'   => $pick ? (string)($sel['locker_code'] ?? '') : '',
+            'cc_locker_name'   => $pick ? (string)($sel['locker_name'] ?? '') : '',
+        ];
     }
 }

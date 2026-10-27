@@ -104,7 +104,9 @@ class CourierCenterOrder extends \Opencart\System\Engine\Controller {
                     'void'         => $this->ccLink($base . 'voidShipment'),
                     'status'       => $this->ccLink($base . 'updateStatus'),
                     'removeBoxnow' => $this->ccLink($base . 'removeBoxNow'),
+                    'setLocker'    => $this->ccLink($base . 'setLocker'),
                 ],
+                'bn_partner_id'       => 10853, // = CourierCenterBoxnow::PARTNER_ID (catalog)
                 'url_download'        => $this->ccLink($base . 'downloadVoucher', 'order_id=' . $order_id),
                 'url_download_return' => $this->ccLink($base . 'downloadVoucher', 'order_id=' . $order_id . '&type=return'),
             ];

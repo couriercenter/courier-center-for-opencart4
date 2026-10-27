@@ -320,7 +320,7 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
                     'error' => 'Η παραγγελία χρησιμοποιεί μέθοδο αποστολής «' . ($name !== '' ? $name : '—') . '» που δεν διαχειρίζεται το plugin. Δημιουργία αποστολής στην Courier Center ούτως ή άλλως;']);
                 return;
             }
-            $this->ccJson($svc->createForOrder($order, [
+            $r = $svc->createForOrder($order, [
                 'service_type'  => (string)($p['service_type'] ?? 'next_day'),
                 'parcel_count'  => (int)($p['parcel_count'] ?? 1),
                 'return_option' => (string)($p['return_option'] ?? 'none'),
@@ -330,10 +330,73 @@ class CourierCenter extends \Opencart\System\Engine\Controller {
                 'locker_name'   => $this->ccText($p['locker_name'] ?? ''),
                 'pickup_point'  => trim($this->ccText($p['pickup_point'] ?? '')),
                 'mode'          => 'manual',
-            ]));
+            ]);
+            // «Επιλογή από χάρτη» in the form (1.1.3): the order keeps the locker, like a checkout choice
+            // (after a void the panel shows it again).
+            $picked = !empty($p['boxnow']) ? $this->adminPick($p) : [];
+            if (!empty($r['success']) && $picked) {
+                $this->saveOrderLocker($order_id, $picked);
+            }
+            $this->ccJson($r);
         } catch (\Throwable $e) {
             $this->ccJson(['success' => false, 'error' => 'Σφάλμα: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * The merchant picked a BOX NOW locker on the admin map (1.1.3): POST order_id, locker_id, locker_code,
+     * locker_name. Saved into the order (custom_field) like a checkout choice; not with an active voucher.
+     */
+    public function setLocker(): void {
+        if (!$this->ccCanModify()) {
+            $this->ccDeny();
+            return;
+        }
+        $order_id = (int)($this->request->post['order_id'] ?? 0);
+        if (!$this->loadOrder($order_id)) {
+            $this->ccJson(['success' => false, 'error' => 'Παραγγελία δε βρέθηκε']);
+            return;
+        }
+        if (CCVoucherService::isActive($this->ccService()->getShipment($order_id))) {
+            $this->ccJson(['success' => false, 'error' => 'Υπάρχει ενεργό voucher. Ακύρωσε πρώτα την αποστολή και μετά άλλαξε locker.']);
+            return;
+        }
+        $locker = $this->adminPick($this->request->post);
+        if (!$locker) {
+            $this->ccJson(['success' => false, 'error' => 'Δεν επιλέχθηκε locker.']);
+            return;
+        }
+        $old = $this->saveOrderLocker($order_id, $locker);
+        $new = $locker['cc_locker_name'] !== '' ? $locker['cc_locker_name'] : $locker['cc_locker_id'];
+        $this->ccService()->history()->add($order_id, 'Το BOX NOW locker άλλαξε από τον merchant: ' . $old . ' → ' . $new . ' (ID: ' . $locker['cc_locker_id'] . ')');
+        $this->ccJson(['success' => true, 'message' => 'Το locker άλλαξε: ' . $new]);
+    }
+
+    /** The locker the admin map sent (POST locker_id/code/name) as custom_field keys, or [] without a locker. */
+    private function adminPick(array $post): array {
+        $id = mb_substr(trim($this->ccText($post['locker_id'] ?? '')), 0, 64);
+        if ($id === '') {
+            return [];
+        }
+        $code = mb_substr(trim($this->ccText($post['locker_code'] ?? '')), 0, 64);
+        return [
+            'cc_delivery_mode' => 'pick',
+            'cc_locker_id'     => $id,
+            'cc_locker_code'   => $code !== '' ? $code : $id,
+            'cc_locker_name'   => mb_substr(trim($this->ccText($post['locker_name'] ?? '')), 0, 255),
+        ];
+    }
+
+    /** Write the locker into the order's custom_field; returns the previous choice for the history note. */
+    private function saveOrderLocker(int $order_id, array $locker): string {
+        $q = $this->db->query("SELECT `custom_field` FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
+        $cf = $q->num_rows ? (json_decode((string)$q->row['custom_field'], true) ?: []) : [];
+        $old = trim((string)($cf['cc_locker_name'] ?? '')) ?: trim((string)($cf['cc_locker_id'] ?? ''));
+        if ($old === '') {
+            $old = ($cf['cc_delivery_mode'] ?? '') === 'auto' ? 'Αυτόματη εύρεση' : '—';
+        }
+        $this->db->query("UPDATE `" . DB_PREFIX . "order` SET `custom_field` = '" . $this->db->escape(json_encode(array_merge($cf, $locker))) . "' WHERE `order_id` = '" . $order_id . "'");
+        return $old;
     }
 
     /** Bulk create (Next Day): BOX NOW is detected per order from its checkout choice. POST order_ids, pickup_point. */

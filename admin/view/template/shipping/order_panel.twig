@@ -17,6 +17,12 @@
     #cc-panel .cc-form-section > .cc-label { font-weight:600; display:block; margin-bottom:6px; font-size:13px; }
     #cc-panel .cc-row { display:block; padding:5px 4px; border-radius:3px; cursor:pointer; font-size:13px; font-weight:normal; }
     #cc-panel .cc-row small { color:#666; display:block; margin-left:20px; }
+    #cc-bn-admin-overlay { display:none; position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(0,0,0,.55); z-index:99999; align-items:center; justify-content:center; padding:16px; }
+    #cc-bn-admin-overlay.cc-open { display:flex; }
+    #cc-bn-admin-modal { background:#fff; border-radius:8px; width:100%; max-width:900px; height:80vh; max-height:680px; display:flex; flex-direction:column; overflow:hidden; }
+    #cc-bn-admin-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #eef1f4; font-weight:600; }
+    #cc-bn-admin-close { background:none; border:none; font-size:18px; cursor:pointer; color:#666; line-height:1; }
+    #cc-bn-admin-overlay #boxnowmap { flex:1; min-height:0; }
   </style>
 
   {% if has_active %}
@@ -68,10 +74,11 @@
     {% endif %}
     {% if locker_id and delivery_mode == 'pick' %}
     <div class="cc-locker-box" style="font-size:13px;">
-      <strong>📦 BOX NOW Locker (επιλεγμένο από πελάτη)</strong><br>
+      <strong>📦 BOX NOW Locker (επιλεγμένο)</strong><br>
       <span style="color:#2c6e35;">{{ locker_name ? locker_name|e : locker_id|e }}</span><br>
       <small style="color:#888;">ID: {{ locker_id|e }}</small>
     </div>
+    <button type="button" class="btn btn-light btn-sm w-100 mb-2" data-cc-action="change-locker">🗺️ Αλλαγή locker</button>
     <button type="button" class="btn btn-primary btn-sm w-100 mb-2" data-cc-action="create-boxnow" data-locker-id="{{ locker_id|e }}" data-locker-code="{{ locker_code|e }}" data-locker-name="{{ locker_name|e }}"><i class="fa-solid fa-plus"></i> Δημιουργία BOX NOW Voucher</button>
     <button type="button" class="btn btn-warning btn-sm w-100" data-cc-action="remove-boxnow">↩️ Αφαίρεση BOX NOW</button>
     {% elseif delivery_mode == 'auto' %}
@@ -79,6 +86,7 @@
       <strong>📦 BOX NOW — Αυτόματη εύρεση Locker</strong><br>
       <span style="font-size:12px; color:#7a6000;">Κοντινότερο διαθέσιμο BOX NOW Locker</span>
     </div>
+    <button type="button" class="btn btn-light btn-sm w-100 mb-2" data-cc-action="change-locker">🗺️ Επιλογή locker από χάρτη</button>
     <button type="button" class="btn btn-primary btn-sm w-100 mb-2" data-cc-action="create-boxnow" data-locker-id="" data-locker-code="" data-locker-name=""><i class="fa-solid fa-plus"></i> Δημιουργία BOX NOW Voucher</button>
     <button type="button" class="btn btn-warning btn-sm w-100" data-cc-action="remove-boxnow">↩️ Αφαίρεση BOX NOW</button>
     {% else %}
@@ -103,10 +111,26 @@
       <label class="cc-row"><input type="radio" name="cc-return" value="mandatory"> <strong>Υποχρεωτικό</strong><small>Ο courier παραλαμβάνει επιστροφικό κατά την παράδοση</small></label>
     </div>
     <div class="cc-form-section">
-      <label class="cc-row"><input type="checkbox" id="cc-boxnow"> <strong>📦 BOX NOW Locker</strong><small>Αυτόματη αναζήτηση σε ακτίνα 1.5km</small></label>
+      <label class="cc-row"><input type="checkbox" id="cc-boxnow"> <strong>📦 BOX NOW Locker</strong><small>Αυτόματη αναζήτηση ή επιλογή από χάρτη</small></label>
+      <div id="cc-bn-mode-wrap" style="display:none; margin-left:20px;">
+        <label class="cc-row"><input type="radio" name="cc_bn_mode" value="auto" checked> <strong>Αυτόματη εύρεση</strong><small>Κοντινότερο locker σε ακτίνα 1.5km</small></label>
+        <label class="cc-row"><input type="radio" name="cc_bn_mode" value="pick"> <strong>Επιλογή από χάρτη</strong></label>
+        <div id="cc-bn-picked" class="cc-locker-box" style="display:none;">📦 <span id="cc-bn-picked-name" style="color:#2c6e35;"></span> <a href="#" id="cc-bn-change" style="margin-left:6px;">Αλλαγή</a></div>
+        <input type="hidden" id="cc-bn-locker-id" value=""><input type="hidden" id="cc-bn-locker-name" value="">
+      </div>
     </div>
     <button type="button" class="btn btn-primary btn-sm w-100" data-cc-action="create"><i class="fa-solid fa-plus"></i> Δημιουργία Voucher</button>
     {% endif %}
+    <div id="cc-bn-admin-overlay">
+      <div id="cc-bn-admin-modal" role="dialog" aria-modal="true">
+        <div id="cc-bn-admin-header">
+          <span>📦 Επιλογή BOX NOW Locker</span>
+          <button type="button" id="cc-bn-admin-close" aria-label="Κλείσιμο">✕</button>
+        </div>
+        <a href="javascript:;" class="boxnow-map-widget-button" aria-hidden="true" tabindex="-1" style="display:none;"></a>
+        <div id="boxnowmap"></div>
+      </div>
+    </div>
   {% endif %}
   <div class="cc-msg mt-2"></div>
 
@@ -193,9 +217,20 @@
       var action = b.getAttribute('data-cc-action');
       if (action === 'create') {
         var multi = panel.querySelector('#cc-multi-parcel'), ret = panel.querySelector('input[name="cc-return"]:checked');
+        var boxnow = panel.querySelector('#cc-boxnow').checked, mode = panel.querySelector('input[name="cc_bn_mode"]:checked');
+        var bnPick = boxnow && mode && mode.value === 'pick', lockerId = panel.querySelector('#cc-bn-locker-id').value;
+        if (bnPick && !lockerId) { msg('danger', 'Διάλεξε locker από τον χάρτη ή «Αυτόματη εύρεση».'); return; }
         create({service_type: panel.querySelector('#cc-service-type').value,
           parcel_count: multi && multi.checked ? parseInt(panel.querySelector('#cc-parcel-count').value || '2', 10) : 1,
-          return_option: ret ? ret.value : 'none', boxnow: panel.querySelector('#cc-boxnow').checked ? 1 : 0});
+          return_option: ret ? ret.value : 'none', boxnow: boxnow ? 1 : 0,
+          locker_id: bnPick ? lockerId : '', locker_code: bnPick ? lockerId : '', locker_name: bnPick ? panel.querySelector('#cc-bn-locker-name').value : ''});
+      } else if (action === 'change-locker') {
+        bnOpen({select: function (l) {
+          b.disabled = true;
+          post(URLS.setLocker, {locker_id: l.id, locker_code: l.id, locker_name: l.name}, function (r) {
+            if (r.success) { reload(); } else { b.disabled = false; msg('danger', r.error || 'Σφάλμα αλλαγής locker'); }
+          });
+        }});
       } else if (action === 'create-boxnow') {
         create({service_type: 'next_day', boxnow: 1, return_option: 'none', parcel_count: 1,
           locker_id: b.getAttribute('data-locker-id'), locker_code: b.getAttribute('data-locker-code'), locker_name: b.getAttribute('data-locker-name')});
@@ -207,6 +242,69 @@
         if (confirm('Αφαίρεση BOX NOW από αυτή την παραγγελία;')) post(URLS.removeBoxnow, {}, function (r) { if (r.success) { reload(); } else { msg('danger', r.error || 'Σφάλμα αφαίρεσης BOX NOW'); } });
       }
     });
+
+    // BOX NOW map (same SDK as the checkout): a fresh #boxnowmap and a fresh script on every opening.
+    var bnHandlers = null, overlay = panel.querySelector('#cc-bn-admin-overlay');
+    window._bn_map_widget_config = {
+      partnerId: {{ bn_partner_id|json_encode }},
+      parentElement: '#boxnowmap',
+      afterSelect: function (selected) {
+        var h = bnHandlers;
+        bnHandlers = null;
+        overlay.classList.remove('cc-open');
+        if (h) {
+          var t = document.createElement('textarea');
+          t.innerHTML = selected.boxnowLockerAddressLine1 || ''; // the SDK sends the address HTML-encoded
+          h.select({id: String(selected.boxnowLockerId || ''), name: t.value});
+        }
+      }
+    };
+    function bnOpen(handlers) {
+      if (!overlay) return;
+      bnHandlers = handlers;
+      var old = overlay.querySelector('#boxnowmap'), map = document.createElement('div');
+      map.id = 'boxnowmap';
+      old.parentNode.replaceChild(map, old);
+      Array.prototype.forEach.call(document.querySelectorAll('script[src*="widget-cdn.boxnow.gr"]'), function (s) { s.parentNode.removeChild(s); });
+      overlay.classList.add('cc-open');
+      var s = document.createElement('script');
+      s.src = 'https://widget-cdn.boxnow.gr/map-widget/client/v5.js';
+      s.onload = function () { var a = overlay.querySelector('.boxnow-map-widget-button'); if (a) a.click(); };
+      s.onerror = function () { bnClose(); msg('danger', 'Ο χάρτης BOX NOW δεν φόρτωσε. Δοκίμασε ξανά.'); };
+      document.head.appendChild(s);
+    }
+    function bnClose() {
+      var h = bnHandlers;
+      bnHandlers = null;
+      if (overlay) overlay.classList.remove('cc-open');
+      if (h && h.cancel) h.cancel();
+    }
+    if (overlay) {
+      overlay.addEventListener('click', function (e) { if (e.target === overlay || e.target.id === 'cc-bn-admin-close') bnClose(); });
+    }
+    // Form without BOX NOW: «Αυτόματη εύρεση» or «Επιλογή από χάρτη»
+    function bnPicked(l) {
+      panel.querySelector('#cc-bn-locker-id').value = l ? l.id : '';
+      panel.querySelector('#cc-bn-locker-name').value = l ? l.name : '';
+      panel.querySelector('#cc-bn-picked-name').textContent = l ? (l.name || l.id) : '';
+      panel.querySelector('#cc-bn-picked').style.display = l ? '' : 'none';
+    }
+    function bnPickFromMap() {
+      bnOpen({select: bnPicked, cancel: function () {
+        if (!panel.querySelector('#cc-bn-locker-id').value) panel.querySelector('input[name="cc_bn_mode"][value="auto"]').checked = true;
+      }});
+    }
+    var bnBox = panel.querySelector('#cc-boxnow');
+    if (bnBox && panel.querySelector('#cc-bn-mode-wrap')) {
+      bnBox.addEventListener('change', function () { panel.querySelector('#cc-bn-mode-wrap').style.display = this.checked ? '' : 'none'; });
+      Array.prototype.forEach.call(panel.querySelectorAll('input[name="cc_bn_mode"]'), function (r) {
+        r.addEventListener('change', function () {
+          if (this.value === 'pick') { if (!panel.querySelector('#cc-bn-locker-id').value) bnPickFromMap(); } else { bnPicked(null); }
+        });
+      });
+      panel.querySelector('#cc-bn-change').addEventListener('click', function (e) { e.preventDefault(); bnPickFromMap(); });
+    }
+
     var multi = panel.querySelector('#cc-multi-parcel');
     if (multi) multi.addEventListener('change', function () { panel.querySelector('#cc-parcel-wrap').style.display = this.checked ? '' : 'none'; });
   }

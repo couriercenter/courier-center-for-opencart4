@@ -149,6 +149,35 @@ class CourierCenterBoxnow extends \Opencart\System\Engine\Controller {
         $args[1]['custom_field'] = $custom;
     }
 
+    /**
+     * Event catalog/model/checkout/order/addHistory/before: $args[0] = order_id, $args[1] = order_status_id.
+     * Safety net for any checkout (some write the order their own way): on the FIRST confirmation of the
+     * customer's own order (status 0 → >0, the session's order_id) write the session's current choice.
+     */
+    public function onConfirm(string &$route, array &$args): void {
+        $order_id = (int)($args[0] ?? 0);
+        if ($order_id <= 0 || (int)($args[1] ?? 0) <= 0 || $order_id !== (int)($this->session->data['order_id'] ?? 0)) {
+            return;
+        }
+        $q = $this->db->query("SELECT `order_status_id`, `custom_field`, `shipping_method` FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
+        if (!$q->num_rows || (int)$q->row['order_status_id'] !== 0) {
+            return;
+        }
+        $sm = json_decode((string)$q->row['shipping_method'], true);
+        $fields = $this->selectionFields(['shipping_method' => is_array($sm) ? $sm : []]);
+        if (!$fields) {
+            return;
+        }
+        $custom = json_decode((string)$q->row['custom_field'], true);
+        if (!is_array($custom)) {
+            $custom = [];
+        }
+        $new = array_merge($custom, $fields);
+        if ($new !== $custom) {
+            $this->db->query("UPDATE `" . DB_PREFIX . "order` SET `custom_field` = '" . $this->db->escape(json_encode($new)) . "' WHERE `order_id` = '" . $order_id . "'");
+        }
+    }
+
     /** Event catalog/controller/checkout/success/before: a new order starts without a stale choice. */
     public function clearSession(string &$route, array &$args): void {
         unset($this->session->data['cc_boxnow']);

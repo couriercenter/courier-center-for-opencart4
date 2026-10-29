@@ -112,18 +112,35 @@ class CCMailContent {
      */
     public static function orderCompletedEmail(array $order, array $items, array $shipment, string $tracking_template): array {
         $n = (int)($order['order_id'] ?? 0);
+        return self::orderStatusEmail($order, $items, $shipment, $tracking_template, 'Η παραγγελία σας ολοκληρώθηκε',
+            [sprintf('Η παραγγελία #%d παραδόθηκε. Σας ευχαριστούμε!', $n)], sprintf('Η παραγγελία #%d ολοκληρώθηκε', $n));
+    }
+
+    /** Email «Η παραγγελία στάλθηκε»: the courier picked the parcel up (with the tracking block). */
+    public static function orderShippedEmail(array $order, array $items, array $shipment, string $tracking_template): array {
+        $n = (int)($order['order_id'] ?? 0);
+        $lines = [sprintf('Η παραγγελία #%d στάλθηκε: ο courier της Courier Center παρέλαβε το δέμα σας.', $n)];
+        if (!empty($shipment['is_boxnow'])) {
+            $lines[] = 'Θα παραδοθεί σε BOX NOW locker· τον κωδικό για να ανοίξετε τη θυρίδα θα τον λάβετε στο κινητό σας.';
+        }
+        return self::orderStatusEmail($order, $items, $shipment, $tracking_template, 'Η παραγγελία σας στάλθηκε', $lines,
+            sprintf('Η παραγγελία #%d στάλθηκε', $n));
+    }
+
+    private static function orderStatusEmail(array $order, array $items, array $shipment, string $tracking_template, string $heading, array $body, string $subject): array {
         $first = trim(html_entity_decode((string)($order['firstname'] ?? ''), ENT_QUOTES, 'UTF-8'));
         $hello = $first !== '' ? sprintf('Γεια σας %s,', $first) : 'Γεια σας,';
-        $heading = 'Η παραγγελία σας ολοκληρώθηκε';
-        $line = sprintf('Η παραγγελία #%d παραδόθηκε. Σας ευχαριστούμε!', $n);
         $lines = [];
         foreach ($items as $it) {
             $lines[] = html_entity_decode((string)($it['name'] ?? 'Προϊόν'), ENT_QUOTES, 'UTF-8') . ' × ' . (int)($it['quantity'] ?? 0);
         }
         $html = '<div style="font-family:Arial,sans-serif; font-size:14px; color:#2c3338; max-width:600px;">'
             . '<h2 style="font-size:18px; color:#1d2327;">' . self::e($heading) . '</h2>'
-            . '<p>' . self::e($hello) . '</p><p>' . self::e($line) . '</p>'
-            . self::trackingHtml($shipment, $tracking_template);
+            . '<p>' . self::e($hello) . '</p>';
+        foreach ($body as $b) {
+            $html .= '<p>' . self::e($b) . '</p>';
+        }
+        $html .= self::trackingHtml($shipment, $tracking_template);
         if ($lines) {
             $html .= '<ul>';
             foreach ($lines as $l) {
@@ -132,9 +149,9 @@ class CCMailContent {
             $html .= '</ul>';
         }
         $html .= '</div>';
-        $text = $heading . "\n\n" . $hello . "\n\n" . $line . "\n\n" . self::trackingText($shipment, $tracking_template)
+        $text = $heading . "\n\n" . $hello . "\n\n" . implode("\n\n", $body) . "\n\n" . self::trackingText($shipment, $tracking_template)
             . ($lines ? "\n- " . implode("\n- ", $lines) . "\n" : '');
-        return ['subject' => sprintf('Η παραγγελία #%d ολοκληρώθηκε', $n), 'html' => $html, 'text' => $text];
+        return ['subject' => $subject, 'html' => $html, 'text' => $text];
     }
 
     /**

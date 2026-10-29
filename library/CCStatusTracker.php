@@ -30,15 +30,26 @@ class CCStatusTracker {
     private $complete_statuses;
     /** @var callable|null function (int $order_id): the customer email «Η παραγγελία ολοκληρώθηκε» */
     private $on_completed;
+    /** @var int status of an order once the courier has picked its parcel up (0 = off) */
+    private $pickup_status_id;
+    /** @var callable|null function (int $order_id): the customer email «Η παραγγελία στάλθηκε» */
+    private $on_picked_up;
+
+    /** Only vouchers of the last 7 days get the «στάλθηκε» email (older ones: the parcel may have arrived long ago). */
+    const PICKUP_NOTIFY_MAX_AGE = 604800;
 
     /**
      * @param array $status_sets ['active' => int[], 'complete' => int[]] (CCVoucherService::statusSets()).
      *                           Auto-complete only moves orders that are in an active status, so a
      *                           cancelled / refunded order is never completed; the cron skips orders
      *                           that are neither active nor complete.
+     * @param array $pickup      ['status_id' => int, 'on_picked_up' => callable|null]: the status an active order
+     *                           moves to once the courier has picked the parcel up (0 / missing = off).
      */
-    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0, array $status_sets = [], $on_completed = null) {
+    public function __construct($db, string $prefix, CCApi $api, int $auto_complete_status_id = 0, array $status_sets = [], $on_completed = null, array $pickup = []) {
         $this->on_completed = $on_completed;
+        $this->pickup_status_id = max(0, (int)($pickup['status_id'] ?? 0));
+        $this->on_picked_up = $pickup['on_picked_up'] ?? null;
         $this->db = $db;
         $this->prefix = $prefix;
         $this->api = $api;
@@ -46,6 +57,11 @@ class CCStatusTracker {
         $this->history = new CCOrderHistory($db, $prefix);
         $this->active_statuses = array_values(array_filter(array_map('intval', $status_sets['active'] ?? [])));
         $this->complete_statuses = array_values(array_filter(array_map('intval', $status_sets['complete'] ?? [])));
+        // An order in the pickup status is still on its way: the cron keeps tracking it and the delivery completes it.
+        if ($this->pickup_status_id > 0 && $this->active_statuses && !in_array($this->pickup_status_id, $this->complete_statuses, true)
+            && !in_array($this->pickup_status_id, $this->active_statuses, true)) {
+            $this->active_statuses[] = $this->pickup_status_id;
+        }
     }
 
     /**
@@ -93,6 +109,11 @@ class CCStatusTracker {
         return in_array($code, self::DELIVERED_CODES, true);
     }
 
+    /** The courier has the parcel: any real status except the cancelled / returned final ones (delivered counts). */
+    public static function is_picked_up(string $code): bool {
+        return $code !== '' && $code !== '0' && (!self::is_final($code) || self::is_delivered($code));
+    }
+
     /** Minutes left before the shipment may be asked again (0 = now). Manual, bulk and cron share the limit. */
     public static function wait_minutes(array $shipment, int $now = 0): int {
         $now = $now > 0 ? $now : time();
@@ -109,10 +130,10 @@ class CCStatusTracker {
      *
      * @param array  $shipment cc_shipments row (order_id, voucher_number, status_code, ...)
      * @param string $source   '' (order panel), 'Bulk' or 'Cron' - shown in the history note
-     * @return array ['success','error','code','desc','final','changed','completed']
+     * @return array ['success','error','code','desc','final','changed','picked_up','completed']
      */
     public function refresh(array $shipment, string $source = ''): array {
-        $out = ['success' => false, 'error' => '', 'code' => '', 'desc' => '', 'final' => false, 'changed' => false, 'completed' => false];
+        $out = ['success' => false, 'error' => '', 'code' => '', 'desc' => '', 'final' => false, 'changed' => false, 'picked_up' => false, 'completed' => false];
         $order_id = (int)($shipment['order_id'] ?? 0);
         $awb = (string)($shipment['voucher_number'] ?? '');
         if ($order_id <= 0 || $awb === '') {
@@ -149,6 +170,7 @@ class CCStatusTracker {
             $this->history->add($order_id, '📍 ' . $label . 'Courier Center status: ' . $code . ' — ' . $status['desc'] . $action);
             $out['changed'] = true;
         }
+        $out['picked_up'] = $this->maybe_mark_picked_up($shipment, $code, $label);
         // Also when the code did not change: a delivered order that stayed in an active status
         // (e.g. auto-complete was off at the time) is completed on the next refresh.
         $out['completed'] = $this->maybe_auto_complete($order_id, $code, $label);
@@ -209,6 +231,44 @@ class CCStatusTracker {
             $where .= " AND o.`order_status_id` IN (" . implode(',', array_map('intval', $statuses)) . ")";
         }
         return $sql . " WHERE " . $where . " ORDER BY (s.`last_checked_at` IS NULL) DESC, s.`last_checked_at` ASC, s.`order_id` ASC LIMIT " . self::CRON_LIMIT;
+    }
+
+    /**
+     * Once per shipment (cc_shipments.picked_up_at): the first status that shows the courier has the parcel moves an
+     * active order to the pickup status. Also when the code did not change, so orders picked up before the setting was
+     * switched on follow on the next refresh. A delivered parcel is left to the auto-complete; an order that is not
+     * active (cancelled, complete, changed by hand) is only remembered, never moved.
+     */
+    private function maybe_mark_picked_up(array $shipment, string $code, string $label): bool {
+        $order_id = (int)($shipment['order_id'] ?? 0);
+        if ($this->pickup_status_id <= 0 || !self::is_picked_up($code) || !empty($shipment['picked_up_at'])) {
+            return false;
+        }
+        $this->db->query("UPDATE `" . $this->prefix . "cc_shipments` SET `picked_up_at` = NOW() WHERE `order_id` = '" . $order_id . "'");
+        if (self::is_delivered($code)) {
+            return false;
+        }
+        $cur = $this->db->query("SELECT `order_status_id` FROM `" . $this->prefix . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
+        $current = $cur->num_rows ? (int)$cur->row['order_status_id'] : 0;
+        if ($current <= 0 || $current === $this->pickup_status_id || in_array($current, $this->complete_statuses, true)
+            || ($this->active_statuses && !in_array($current, $this->active_statuses, true))) {
+            return false;
+        }
+        $created = strtotime((string)($shipment['created_at'] ?? ''));
+        $notify = $this->on_picked_up !== null && $created !== false && (time() - $created) <= self::PICKUP_NOTIFY_MAX_AGE;
+        $awb = (string)($shipment['voucher_number'] ?? '');
+        $note = '🚚 ' . $label . 'Courier Center: Ο courier παρέλαβε την αποστολή ' . $awb . '.' . ($notify ? ' Ο πελάτης ενημερώθηκε με email.' : '');
+        if (!$this->history->add($order_id, $note, $this->pickup_status_id, $notify)) {
+            return false;
+        }
+        if ($notify) {
+            try {
+                call_user_func($this->on_picked_up, $order_id);
+            } catch (\Throwable $e) {
+                // an email problem never breaks the status update
+            }
+        }
+        return true;
     }
 
     private function maybe_auto_complete(int $order_id, string $code, string $label): bool {

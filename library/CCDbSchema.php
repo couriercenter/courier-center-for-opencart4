@@ -10,7 +10,7 @@ namespace Opencart\Extension\Couriercenter\Library;
 class CCDbSchema {
 
     /** Bump when a table/column is added: ensureOnce() then re-runs ensure() once. */
-    const VERSION = '3'; // 3: returns origin / notify_customer / Pickup date and window
+    const VERSION = '4'; // 3: returns origin / notify_customer / Pickup date and window · 4: cc_shipments.picked_up_at
 
     /** The setting row that remembers VERSION (same row in OpenCart 3 and 4). */
     const STATE_CODE = 'courier_center_state';
@@ -42,6 +42,8 @@ class CCDbSchema {
                 'pickup_point'      => "VARCHAR(32) DEFAULT NULL",
                 'requestor_account' => "VARCHAR(32) DEFAULT NULL",
                 'boxnow_parcel_id'  => "VARCHAR(64) DEFAULT NULL",
+                // 1.1.3: when the courier picked the parcel up («Κατάσταση όταν παραλαμβάνει ο courier»)
+                'picked_up_at'      => "DATETIME DEFAULT NULL",
                 '__keys'            => ['PRIMARY KEY (`id`)', 'UNIQUE KEY `order_id` (`order_id`)'],
             ],
             'cc_locks' => [

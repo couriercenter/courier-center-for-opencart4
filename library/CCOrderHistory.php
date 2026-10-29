@@ -31,7 +31,7 @@ class CCOrderHistory {
      *
      * @return bool true when a history row was written
      */
-    public function add(int $order_id, string $comment, int $new_status_id = 0): bool {
+    public function add(int $order_id, string $comment, int $new_status_id = 0, bool $notify = false): bool {
         if ($order_id <= 0) {
             return false;
         }
@@ -45,7 +45,7 @@ class CCOrderHistory {
             return false;
         }
 
-        $this->db->query("INSERT INTO `" . $this->prefix . "order_history` SET `order_id` = '" . $order_id . "', `order_status_id` = '" . $status . "', `notify` = '0', `comment` = '" . $this->db->escape($this->storable($comment)) . "', `date_added` = NOW()");
+        $this->db->query("INSERT INTO `" . $this->prefix . "order_history` SET `order_id` = '" . $order_id . "', `order_status_id` = '" . $status . "', `notify` = '" . ($notify ? 1 : 0) . "', `comment` = '" . $this->db->escape($this->storable($comment)) . "', `date_added` = NOW()");
 
         if ($new_status_id > 0 && $new_status_id !== $current) {
             $this->db->query("UPDATE `" . $this->prefix . "order` SET `order_status_id` = '" . $new_status_id . "', `date_modified` = NOW() WHERE `order_id` = '" . $order_id . "'");

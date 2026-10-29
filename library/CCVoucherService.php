@@ -225,6 +225,7 @@ class CCVoucherService {
         $set[] = "`status_desc` = ''";
         $set[] = '`last_checked_at` = NULL';
         $set[] = '`status_updated_at` = NULL';
+        $set[] = '`picked_up_at` = NULL';
         $set[] = '`created_at` = NOW()';
         if ($this->db->query("SELECT `id` FROM `" . $this->prefix . "cc_shipments` WHERE `order_id` = '" . $order_id . "' LIMIT 1")->num_rows) {
             $this->db->query("UPDATE `" . $this->prefix . "cc_shipments` SET " . implode(', ', $set) . " WHERE `order_id` = '" . $order_id . "'");
@@ -238,10 +239,32 @@ class CCVoucherService {
     }
 
     /**
-     * @param callable|null $on_completed function (int $order_id): sends the «Η παραγγελία ολοκληρώθηκε» email
+     * @param callable|null $on_completed  function (int $order_id): sends the «Η παραγγελία ολοκληρώθηκε» email
+     * @param callable|null $on_picked_up  function (int $order_id): sends the «Η παραγγελία στάλθηκε» email
      */
-    public function tracker($on_completed = null) {
-        return new CCStatusTracker($this->db, $this->prefix, $this->api(), $this->autoCompleteStatusId(), $this->statusSets(), $this->autoCompleteNotify() ? $on_completed : null);
+    public function tracker($on_completed = null, $on_picked_up = null) {
+        CCDbSchema::ensureOnce($this->db, $this->prefix); // cc_shipments.picked_up_at after a files-only update
+        return new CCStatusTracker($this->db, $this->prefix, $this->api(), $this->autoCompleteStatusId(), $this->statusSets(),
+            $this->autoCompleteNotify() ? $on_completed : null,
+            ['status_id' => $this->pickupStatusId(), 'on_picked_up' => $this->pickupNotify() ? $on_picked_up : null]);
+    }
+
+    /** The status an order moves to once the courier has picked the parcel up: 0 (unset) = off. */
+    public function pickupStatusId() {
+        return max(0, (int)trim((string)$this->setting('pickup_status_id')));
+    }
+
+    /** Email the customer when the order moves on pickup (default yes). */
+    public function pickupNotify() {
+        return trim((string)$this->setting('pickup_notify')) !== '0';
+    }
+
+    /**
+     * The «Η παραγγελία στάλθηκε» email of an order (the platform delivers it).
+     * @return array ['to', 'subject', 'html', 'text'] | [] when the order has no email address
+     */
+    public function shippedEmail($order_id) {
+        return $this->customerEmail((int)$order_id, 'shipped');
     }
 
     /**
@@ -262,7 +285,11 @@ class CCVoucherService {
      * @return array ['to', 'subject', 'html', 'text'] | [] when the order has no email address
      */
     public function completedEmail($order_id) {
-        $order_id = (int)$order_id;
+        return $this->customerEmail((int)$order_id, 'completed');
+    }
+
+    /** @param string $kind completed | shipped */
+    private function customerEmail($order_id, $kind) {
         $q = $this->db->query("SELECT `order_id`, `firstname`, `email` FROM `" . $this->prefix . "order` WHERE `order_id` = '" . $order_id . "' LIMIT 1");
         if (!$q->num_rows || trim((string)$q->row['email']) === '') {
             return [];
@@ -278,7 +305,9 @@ class CCVoucherService {
         if ((string)$this->setting('email_tracking_enabled') === '0') {
             $shipment = []; // the merchant switched the tracking block off
         }
-        $m = CCMailContent::orderCompletedEmail($q->row, $items, $shipment, $template);
+        $m = $kind === 'shipped'
+            ? CCMailContent::orderShippedEmail($q->row, $items, $shipment, $template)
+            : CCMailContent::orderCompletedEmail($q->row, $items, $shipment, $template);
         return ['to' => trim((string)$q->row['email'])] + $m;
     }
 

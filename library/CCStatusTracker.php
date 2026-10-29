@@ -72,7 +72,10 @@ class CCStatusTracker {
      * The details of an AWB also list every return shipment whose Reference1 is that AWB: the entry
      * whose ShipmentAwb is the requested AWB is used, the first one only as a fallback.
      *
-     * @return array ['code' => string, 'desc' => string, 'action' => string]
+     * 'action' is the CollectionStatus (2 = waiting for the courier, 10 = collected, 14 = cancelled); 'futile' is a
+     * collection closed as a futile visit (a Reference says ΑΣΚΟΠΗ), i.e. the courier came but took nothing.
+     *
+     * @return array ['code' => string, 'desc' => string, 'action' => string, 'futile' => bool]
      */
     public static function parse_status(array $result, string $awb = ''): array {
         $info = $result['ShipmentDetails'][0]['ShipmentInfo'] ?? null;
@@ -90,12 +93,14 @@ class CCStatusTracker {
                 'code'   => trim((string)($info['ShipmentStatus'] ?? '')),
                 'desc'   => trim((string)($info['ShipmentStatusDesc'] ?? '')),
                 'action' => trim((string)($info['CollectionStatus'] ?? '')),
+                'futile' => self::is_futile_visit($info),
             ];
         }
         return [
             'code'   => trim((string)($result['StatusCode'] ?? $result['DeliveryStatus'] ?? '')),
             'desc'   => trim((string)($result['StatusDescription'] ?? $result['DeliveryStatusDescription'] ?? '')),
             'action' => '',
+            'futile' => false,
         ];
     }
 
@@ -109,9 +114,29 @@ class CCStatusTracker {
         return in_array($code, self::DELIVERED_CODES, true);
     }
 
-    /** The courier has the parcel: any real status except the cancelled / returned final ones (delivered counts). */
-    public static function is_picked_up(string $code): bool {
-        return $code !== '' && $code !== '0' && (!self::is_final($code) || self::is_delivered($code));
+    /** A Reference of the shipment says ΑΣΚΟΠΗ (futile visit), as the returns read it. */
+    public static function is_futile_visit(array $info): bool {
+        foreach (['Reference1', 'Reference2', 'Reference3', 'Reference4'] as $k) {
+            if (CCReturnsRules::contains_askopi($info[$k] ?? '')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The courier has the parcel: the collection is closed (CollectionStatus 10) and not as a futile visit, or the
+     * parcel was delivered. ShipmentStatus alone says nothing here: every voucher goes from 0 «None» to 15
+     * «NewShipment» a few minutes after it is created, picked up or not (and BOX NOW stays at 15 until delivery).
+     */
+    public static function is_picked_up(string $code, string $collection = '', bool $futile = false): bool {
+        if (self::is_delivered($code)) {
+            return true;
+        }
+        if ($code === '' || $code === '0' || self::is_final($code)) {
+            return false;
+        }
+        return $collection === (string)CCReturnsRules::COLLECTION_COMPLETED && !$futile;
     }
 
     /** Minutes left before the shipment may be asked again (0 = now). Manual, bulk and cron share the limit. */
@@ -170,7 +195,7 @@ class CCStatusTracker {
             $this->history->add($order_id, '📍 ' . $label . 'Courier Center status: ' . $code . ' — ' . $status['desc'] . $action);
             $out['changed'] = true;
         }
-        $out['picked_up'] = $this->maybe_mark_picked_up($shipment, $code, $label);
+        $out['picked_up'] = $this->maybe_mark_picked_up($shipment, $code, $status['action'], $status['futile'], $label);
         // Also when the code did not change: a delivered order that stayed in an active status
         // (e.g. auto-complete was off at the time) is completed on the next refresh.
         $out['completed'] = $this->maybe_auto_complete($order_id, $code, $label);
@@ -239,9 +264,9 @@ class CCStatusTracker {
      * switched on follow on the next refresh. A delivered parcel is left to the auto-complete; an order that is not
      * active (cancelled, complete, changed by hand) is only remembered, never moved.
      */
-    private function maybe_mark_picked_up(array $shipment, string $code, string $label): bool {
+    private function maybe_mark_picked_up(array $shipment, string $code, string $collection, bool $futile, string $label): bool {
         $order_id = (int)($shipment['order_id'] ?? 0);
-        if ($this->pickup_status_id <= 0 || !self::is_picked_up($code) || !empty($shipment['picked_up_at'])) {
+        if ($this->pickup_status_id <= 0 || !self::is_picked_up($code, $collection, $futile) || !empty($shipment['picked_up_at'])) {
             return false;
         }
         $this->db->query("UPDATE `" . $this->prefix . "cc_shipments` SET `picked_up_at` = NOW() WHERE `order_id` = '" . $order_id . "'");

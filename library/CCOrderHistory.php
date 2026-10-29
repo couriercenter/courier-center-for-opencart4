@@ -16,6 +16,9 @@ class CCOrderHistory {
     /** @var string table prefix (DB_PREFIX) */
     private $prefix;
 
+    /** @var bool|null does the DB connection store 4-byte UTF-8 (emoji)? null = not asked yet */
+    private $utf8mb4;
+
     public function __construct($db, string $prefix) {
         $this->db = $db;
         $this->prefix = $prefix;
@@ -42,11 +45,27 @@ class CCOrderHistory {
             return false;
         }
 
-        $this->db->query("INSERT INTO `" . $this->prefix . "order_history` SET `order_id` = '" . $order_id . "', `order_status_id` = '" . $status . "', `notify` = '0', `comment` = '" . $this->db->escape($comment) . "', `date_added` = NOW()");
+        $this->db->query("INSERT INTO `" . $this->prefix . "order_history` SET `order_id` = '" . $order_id . "', `order_status_id` = '" . $status . "', `notify` = '0', `comment` = '" . $this->db->escape($this->storable($comment)) . "', `date_added` = NOW()");
 
         if ($new_status_id > 0 && $new_status_id !== $current) {
             $this->db->query("UPDATE `" . $this->prefix . "order` SET `order_status_id` = '" . $new_status_id . "', `date_modified` = NOW() WHERE `order_id` = '" . $order_id . "'");
         }
         return true;
+    }
+
+    /**
+     * OpenCart 3 connects with utf8 (3 bytes per character): MySQL stores every emoji as "????".
+     * There the emoji (and the space after it) are left out; OpenCart 4 (utf8mb4) keeps them.
+     */
+    private function storable(string $comment): string {
+        if ($this->utf8mb4 === null) {
+            $q = $this->db->query("SELECT @@character_set_connection AS cs");
+            $this->utf8mb4 = isset($q->row['cs']) && strpos((string)$q->row['cs'], 'utf8mb4') === 0;
+        }
+        if ($this->utf8mb4) {
+            return $comment;
+        }
+        $clean = preg_replace('/[\x{10000}-\x{10FFFF}]\x{FE0F}? ?/u', '', $comment);
+        return $clean === null ? $comment : $clean;
     }
 }

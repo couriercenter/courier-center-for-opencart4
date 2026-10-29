@@ -200,6 +200,22 @@
             </select></div>
           </div>
 
+          <legend class="mt-4">Παραλαβή από τον courier</legend>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Σε παραλαβή → status</label>
+            <div class="col-sm-10"><select name="shipping_courier_center_pickup_status_id" class="form-select" style="max-width:320px;">
+              <option value="0"{% if pickup_status_id == '0' %} selected{% endif %}>Ανενεργό (προεπιλογή)</option>
+              {% for os in order_statuses %}<option value="{{ os.order_status_id|e }}"{% if pickup_status_id == os.order_status_id %} selected{% endif %}>{{ os.name|e }}</option>{% endfor %}
+            </select><div class="form-text">Μόλις ο courier παραλάβει το δέμα, η παραγγελία περνά σε αυτό το status (π.χ. «Shipped» / «Εστάλη»). Μία φορά ανά αποστολή και μόνο από ενεργές καταστάσεις· αν αλλάξετε μετά το status με το χέρι, δεν ξαναπειράζεται. Στην παράδοση ισχύει κανονικά η Αυτόματη Ολοκλήρωση.</div></div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Email στον πελάτη</label>
+            <div class="col-sm-10"><select name="shipping_courier_center_pickup_notify" class="form-select" style="width:auto;">
+              <option value="1"{% if pickup_notify != '0' %} selected{% endif %}>Ναι — «Η παραγγελία στάλθηκε» με τον αριθμό αποστολής</option>
+              <option value="0"{% if pickup_notify == '0' %} selected{% endif %}>Όχι</option>
+            </select><div class="form-text">Στέλνεται μόνο για vouchers των τελευταίων 7 ημερών· παλαιότερες αποστολές αλλάζουν status χωρίς email.</div></div>
+          </div>
+
           <legend class="mt-4">Αυτόματη Ολοκλήρωση &amp; Δημιουργία</legend>
           <div class="row mb-3">
             <label class="col-sm-2 col-form-label">Σε παράδοση → status</label>

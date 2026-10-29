@@ -46,7 +46,13 @@ $completed_mail = function ($order_id) use ($db, $config, $mail): void {
         $mail($m['to'], $m['subject'], $m['html']);
     }
 };
-$result = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Cron::run($db, DB_PREFIX, $config, DIR_CACHE, $returns_mail, $completed_mail);
+$shipped_mail = function ($order_id) use ($db, $config, $mail): void {
+    $m = (new \Opencart\Extension\Couriercenter\Library\CCVoucherService($db, $config, DB_PREFIX))->shippedEmail((int)$order_id);
+    if ($m) {
+        $mail($m['to'], $m['subject'], $m['html']);
+    }
+};
+$result = \Opencart\Extension\Couriercenter\Library\Oc4\CCOc4Cron::run($db, DB_PREFIX, $config, DIR_CACHE, $returns_mail, $completed_mail, $shipped_mail);
 foreach ($result['lines'] as $line) {
     echo '  ' . $line . "\n";
 }

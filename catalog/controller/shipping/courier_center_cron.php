@@ -25,6 +25,8 @@ class CourierCenterCron extends \Opencart\System\Engine\Controller {
             $this->ccSendReturnMail((string)$event, (int)$id);
         }, function ($order_id) {
             $this->ccSendCompletedMail((int)$order_id);
+        }, function ($order_id) {
+            $this->ccSendShippedMail((int)$order_id);
         });
         $this->response->setOutput($r['message'] . "\n" . implode("\n", $r['lines']) . "\n");
     }

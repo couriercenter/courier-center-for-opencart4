@@ -112,10 +112,20 @@ trait CCOc4Controller {
         }
     }
 
-    /** Tracker of the shop's vouchers that emails the customer when a delivered order is completed. */
+    /** «Η παραγγελία στάλθηκε» to the customer of an order that moved because the courier picked its parcel up. */
+    protected function ccSendShippedMail(int $order_id): void {
+        $m = $this->ccService()->shippedEmail($order_id);
+        if ($m) {
+            $this->ccMail($m['to'], $m['subject'], $m['html']);
+        }
+    }
+
+    /** Tracker of the shop's vouchers that emails the customer on pickup and when a delivered order is completed. */
     protected function ccTracker(): \Opencart\Extension\Couriercenter\Library\CCStatusTracker {
         return $this->ccService()->tracker(function ($order_id) {
             $this->ccSendCompletedMail((int)$order_id);
+        }, function ($order_id) {
+            $this->ccSendShippedMail((int)$order_id);
         });
     }
 

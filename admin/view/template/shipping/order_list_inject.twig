@@ -156,11 +156,14 @@
       var tdM = badge(m ? (m.name || '—') : '—', m ? '#fff' : '#ccc', m ? (m.managed ? '#5DC122' : '#999') : '');
       if (m) tdM.title = m.managed ? 'Διαχειρίζεται από το plugin' : 'Δεν διαχειρίζεται από το plugin — δεν δημιουργείται voucher αυτόματα/μαζικά';
       var tdV, tdS, tdT;
+      // Τύπος χωρίς (ενεργό) voucher: η επιλογή του πελάτη, μόνο για μεθόδους του extension
+      var tdPending = (m && m.managed) ? badge(m.boxnow ? '📦 BOX NOW' : '🚚 Κανονική', '#555', '#fff') : badge('—', '#ccc');
+      if (m && m.managed) { tdPending.firstChild.style.border = '1px dashed #c3c4c7'; tdPending.title = 'Χωρίς voucher ακόμα'; }
       if (!s || !s.voucher_number) {
-        tdV = badge('—', '#ccc'); tdS = badge('—', '#ccc'); tdT = badge('—', '#ccc');
+        tdV = badge('—', '#ccc'); tdS = badge('—', '#ccc'); tdT = tdPending;
       } else if (s.is_voided == 1) {
         tdV = badge(s.voucher_number, '#aaa', '', true); tdS = badge('Ακυρωμένη', '#c0392b', '#fce8e6');
-        tdT = badge(s.is_boxnow == 1 ? '📦 BOX NOW' : '🚚 Κανονική', '#aaa');
+        tdT = tdPending;
       } else {
         tdT = s.is_boxnow == 1 ? badge('📦 BOX NOW', '#7a4b00', '#fff3cd') : badge('🚚 Κανονική', '#2c3338', '#f0f0f1');
         tdV = el('td', 'text-center d-none d-lg-table-cell cc-col');

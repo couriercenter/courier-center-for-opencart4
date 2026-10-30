@@ -40,8 +40,9 @@ class CourierCenterOrderList extends \Opencart\System\Engine\Controller {
                         'parcel_id'       => $this->ccText($row['boxnow_parcel_id'] ?? ''),
                     ];
                 }
-                foreach ($this->db->query("SELECT `order_id`, `shipping_method` FROM `" . DB_PREFIX . "order` WHERE `order_id` IN (" . $list . ")")->rows as $row) {
-                    $methods[(string)$row['order_id']] = ['name' => CCVoucherService::shippingName($row), 'managed' => $svc->isHandledOrder($row)];
+                foreach ($this->db->query("SELECT `order_id`, `shipping_method`, `custom_field` FROM `" . DB_PREFIX . "order` WHERE `order_id` IN (" . $list . ")")->rows as $row) {
+                    $methods[(string)$row['order_id']] = ['name' => CCVoucherService::shippingName($row), 'managed' => $svc->isHandledOrder($row),
+                        'boxnow' => (bool)CCVoucherService::boxnowFromOrder($row)];
                 }
                 // «Επιστροφή»: status of the newest return request (+N when there are more)
                 foreach ((new \Opencart\Extension\Couriercenter\Library\CCReturnsRepo($this->db, DB_PREFIX))->summaryForOrders($ids) as $id => $r) {

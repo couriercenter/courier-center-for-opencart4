@@ -1,3 +1,8 @@
+{#
+  Courier Center → Οδηγίες. ΠΑΡΑΓΕΤΑΙ από το build_docs.py (courier-center-releases/odigies-deigma-2026-10)
+  από το εγκεκριμένο deigma-opencart-src.html (+ render_oc.py) και το changelog-oc4.html (ιστορικό εκδόσεων).
+  Αλλαγές στο κείμενο γίνονται εκεί και ξαναχτίζεται. Σε κάθε έκδοση: νέα εγγραφή ΠΑΝΩ-ΠΑΝΩ στο changelog-oc4.html.
+#}
 {{ header }}{{ column_left }}
 <div id="content">
   <div class="page-header">
@@ -6,7 +11,7 @@
         <a href="{{ url_settings }}" class="btn btn-secondary"><i class="fa-solid fa-gear"></i> Ρυθμίσεις</a>
         <a href="{{ url_report }}" class="btn btn-danger"><i class="fa-solid fa-bug"></i> Αναφορά Προβλήματος</a>
       </div>
-      <h1>📖 Courier Center — Οδηγίες</h1>
+      <h1>📖 Courier Center — Οδηγίες <span style="font-size:13px; font-weight:600; color:#fff; background:#5DC122; padding:3px 10px; border-radius:12px; vertical-align:middle;">v{{ version }}</span></h1>
       <ol class="breadcrumb">
         {% for breadcrumb in breadcrumbs %}
         <li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
@@ -14,294 +19,512 @@
       </ol>
     </div>
   </div>
-
   <div class="container-fluid">
-    <div class="cc-docs">
+<style>
 
-      <style>
-        .cc-docs { max-width: 1000px; }
-        .cc-docs .cc-ver-badge { font-size:13px; font-weight:600; color:#fff; background:#5DC122; padding:3px 10px; border-radius:12px; vertical-align:middle; }
-        .cc-docs .cc-card { background:#fff; border:1px solid #e2e4e7; border-radius:8px; padding:20px 24px; margin:0 0 18px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
-        .cc-docs .cc-card h2 { margin-top:0; border-bottom:2px solid #f0f0f1; padding-bottom:8px; }
-        .cc-docs .cc-card h3 { margin:18px 0 6px; }
-        .cc-docs table.cc-tbl { border-collapse:collapse; width:100%; margin:8px 0; }
-        .cc-docs table.cc-tbl th, .cc-docs table.cc-tbl td { border:1px solid #e2e4e7; padding:8px 10px; text-align:left; vertical-align:top; font-size:13px; }
-        .cc-docs table.cc-tbl th { background:#f6f7f7; }
-        .cc-docs .cc-toc { columns:2; column-gap:32px; }
-        .cc-docs .cc-toc a { text-decoration:none; }
-        .cc-docs ol.cc-steps { margin:8px 0 8px 18px; }
-        .cc-docs ol.cc-steps li { margin-bottom:6px; }
-        .cc-docs .cc-tip { background:#f0f6fc; border-left:4px solid #2271b1; padding:10px 14px; border-radius:3px; margin:10px 0; }
-        .cc-docs .cc-warn { background:#fff8e1; border-left:4px solid #ffb900; padding:10px 14px; border-radius:3px; margin:10px 0; }
-        .cc-docs .cc-new { display:inline-block; font-size:11px; font-weight:700; color:#fff; background:#2271b1; padding:1px 7px; border-radius:10px; margin-left:6px; vertical-align:middle; }
-        .cc-docs code { background:#f0f0f1; padding:1px 5px; border-radius:3px; }
-      </style>
+  .ccd { max-width: 900px; margin: 0 auto; font-size: 15px; line-height: 1.6; color: #1d2327; }
+  .ccd .x-draftnote { background:#464342; color:#fff; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:18px; }
+  .ccd h1 { font-size: 24px; margin: 0 0 4px; }
+  .ccd .lead { color:#555; margin:0 0 18px; }
+  .ccd .card { background:#fff; border:1px solid #e2e4e7; border-radius:8px; padding:20px 24px; margin:0 0 18px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .ccd .card h2 { margin:0 0 10px; font-size:20px; border-bottom:2px solid #f0f0f1; padding-bottom:8px; }
+  .ccd .card h3 { margin:22px 0 6px; font-size:16px; }
+  .ccd .part { margin:30px 0 10px; font-size:13px; font-weight:700; letter-spacing:.06em; color:#C44F28; text-transform:uppercase; }
+  .ccd .what { font-size:15px; color:#333; background:#f6f7f7; padding:8px 12px; border-radius:4px; margin:0 0 12px; }
+  .ccd .step { display:flex; gap:12px; margin:14px 0 6px; align-items:flex-start; }
+  .ccd .step .n { flex:0 0 28px; height:28px; border-radius:50%; background:#F37029; color:#fff; font-weight:700; text-align:center; line-height:28px; }
+  .ccd .step .t { flex:1; }
+  .ccd .shot { margin:6px 0 4px 40px; }
+  .ccd .shot img { max-width:100%; border:1px solid #dcdcde; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,.08); display:block; }
+  .ccd .shot.narrow img { max-width:620px; }
+  .ccd .shot .cap { font-size:12px; color:#666; margin-top:4px; }
+  .ccd .mk { display:inline-block; width:20px; height:20px; border-radius:50%; background:#e2231a; color:#fff; font:bold 12px/20px Arial,sans-serif; text-align:center; margin:0 2px; vertical-align:1px; }
+  .ccd .ex { background:#eef7ee; border-left:4px solid #3a3; padding:10px 14px; border-radius:3px; margin:12px 0; }
+  .ccd .warn { background:#fff4e5; border-left:4px solid #F37029; padding:10px 14px; border-radius:3px; margin:12px 0; }
+  .ccd .tip { background:#f0f6fc; border-left:4px solid #2271b1; padding:10px 14px; border-radius:3px; margin:12px 0; }
+  .ccd table { border-collapse:collapse; width:100%; margin:8px 0; }
+  .ccd th, .ccd td { border:1px solid #e2e4e7; padding:8px 10px; text-align:left; vertical-align:top; font-size:14px; }
+  .ccd th { background:#f6f7f7; }
+  .ccd .toc { columns:2; column-gap:30px; font-size:14px; }
+  .ccd .toc p { margin:0 0 4px; break-inside:avoid; }
+  .ccd .toc a { text-decoration:none; }
+  .ccd .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; color:#fff; }
+  .ccd code { background:#f0f0f1; padding:1px 5px; border-radius:3px; }
+  .ccd .start { background:linear-gradient(135deg,#fff7f1,#fff); border:2px solid #F68B1F; }
+  .ccd .start ol { margin:6px 0 0 20px; padding:0; }
+  .ccd .start li { margin-bottom:8px; }
+  .ccd dl dt { font-weight:700; margin-top:10px; }
+  .ccd dl dd { margin:2px 0 0 0; color:#333; }
 
-      <p style="color:#666;max-width:820px;">Πλήρης οδηγός εγκατάστασης, ρυθμίσεων και χρήσης του extension <strong>Courier Center για OpenCart</strong> <span class="cc-ver-badge">v{{ version }}</span>. Απαιτήσεις: OpenCart 4.0.2.x · PHP 8.0+.</p>
+  .ccd .card { max-width:none; min-width:0; }
+  .ccd .cc-new { display:inline-block; background:#5DC122; color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; vertical-align:1px; }
+  .ccd { margin:0; }
+  .ccd h2, .ccd h3 { font-family:inherit; color:#1d2327; }
+  .ccd p, .ccd li { font-size:15px; }
+</style>
+<div class="ccd">
 
-      <div class="cc-card">
-        <h2>Περιεχόμενα</h2>
-        <div class="cc-toc">
-          <p><a href="#cc-new">⭐ Τι νέο σε κάθε έκδοση</a></p>
-          <p><a href="#cc-intro">1. Εισαγωγή</a></p>
-          <p><a href="#cc-install">2. Εγκατάσταση</a></p>
-          <p><a href="#cc-settings">3. Ρυθμίσεις</a></p>
-          <p><a href="#cc-create">4. Δημιουργία Voucher</a></p>
-          <p><a href="#cc-print">5. Εκτύπωση Ετικέτας</a></p>
-          <p><a href="#cc-track">6. Παρακολούθηση Αποστολών</a></p>
-          <p><a href="#cc-cancel">7. Ακύρωση Αποστολής</a></p>
-          <p><a href="#cc-bulk">8. Μαζικές Ενέργειες</a></p>
-          <p><a href="#cc-manifest">9. Manifest Παραλαβής</a></p>
-          <p><a href="#cc-emails">10. Tracking στα Emails</a></p>
-          <p><a href="#cc-points">11. Πολλαπλά σημεία αποστολής</a></p>
-          <p><a href="#cc-returns">12. Επιστροφές</a></p>
-          <p><a href="#cc-support">13. Υποστήριξη</a></p>
-          <p><a href="#cc-faq">14. Συχνές Ερωτήσεις</a></p>
-        </div>
-      </div>
 
-      <div class="cc-card" id="cc-new">
-        <h2>⭐ Τι νέο σε κάθε έκδοση</h2>
-        <h3>v1.1.3</h3>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>Κατάσταση όταν παραλαμβάνει ο courier</strong> (νέο): στις Ρυθμίσεις, «Παραλαβή από τον courier» → «Σε παραλαβή → status», διαλέξτε π.χ. «Shipped». Μόλις ο courier παραλάβει το δέμα, η παραγγελία αλλάζει status και ο πελάτης λαμβάνει (αν το θέλετε) email «Η παραγγελία στάλθηκε» με τον αριθμό αποστολής. Ιδιαίτερα χρήσιμο για BOX NOW, όπου η παράδοση καταγράφεται μόνο όταν ο πελάτης ανοίξει τη θυρίδα. Προεπιλογή: ανενεργό.</li>
-          <li><strong>Επιλογή BOX NOW locker από χάρτη στην παραγγελία:</strong> όταν ο πελάτης σας πει στο τηλέφωνο σε ποιο locker θέλει το δέμα, το διαλέγετε από τον χάρτη της BOX NOW στην καρτέλα Courier Center της παραγγελίας: στη φόρμα, με τσεκαρισμένο το «BOX NOW Locker», «Αυτόματη εύρεση» ή «Επιλογή από χάρτη»· σε παραγγελία με BOX NOW, «Αλλαγή locker». Το locker αποθηκεύεται στην παραγγελία (με σημείωση στο ιστορικό) και μπαίνει στο voucher. Με ενεργό voucher ακυρώστε πρώτα την αποστολή.</li>
-          <li><strong>Τύπος αποστολής στη λίστα παραγγελιών πριν από το voucher:</strong> η στήλη «Τύπος» δείχνει «📦 BOX NOW» ή «🚚 Κανονική» από τη στιγμή που μπαίνει η παραγγελία (με διακεκομμένο πλαίσιο όσο δεν έχει βγει voucher), ώστε να ξεχωρίζετε τις παραγγελίες BOX NOW χωρίς να τις ανοίγετε.</li>
-        </ul>
-        <h3>v1.1.2</h3>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>BOX NOW σε κάθε checkout:</strong> τη στιγμή που ολοκληρώνεται η παραγγελία γράφεται η τρέχουσα επιλογή BOX NOW του πελάτη, ακόμα κι αν το checkout γράφει την παραγγελία με δικό του τρόπο.</li>
-        </ul>
-        <h3>v1.1.1</h3>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>Διόρθωση BOX NOW:</strong> όταν ο πελάτης άλλαζε τρόπο πληρωμής ή αποστολής στο checkout αφού είχε επιλέξει locker, η επιλογή BOX NOW χανόταν και το voucher έβγαινε κανονική αποστολή. Τώρα η παραγγελία κρατά πάντα την τρέχουσα επιλογή του πελάτη.</li>
-        </ul>
-        <h3>v1.1.0</h3>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>Πολλαπλά σημεία αποστολής (υποκωδικοί)</strong> με χρέωση στο σημείο ή στον κεντρικό κωδικό (ενότητα 11).</li>
-          <li><strong>Επιστροφές από τον πελάτη</strong> (κατάστημα Courier Center ή BOX NOW locker) με έγκριση από εσάς (ενότητα 12).</li>
-          <li><strong>Ίδιες λειτουργίες με το WooCommerce:</strong> πεδίο αριθμού διεύθυνσης (Custom Field), αυτόματη ολοκλήρωση της παραγγελίας στην παράδοση με email «Η παραγγελία ολοκληρώθηκε», ενημέρωση status κάθε 2 ώρες <strong>χωρίς cron job</strong>, κουμπί «Αίτημα Επιστροφής» και στη λίστα παραγγελιών του πελάτη, «Νέα επιστροφή» και ειδοποιήσεις για το κατάστημα, μενού Sales → Courier Center, κουμπί «Εκτύπωση BOX NOW», ενδείξεις «Νέα» / «Επιστροφή» στη λίστα, ενεργοποίηση/απενεργοποίηση κάθε email επιστροφής, τουλάχιστον μία μέθοδος αποστολής στις ρυθμίσεις.</li>
-          <li><strong>Tracking μέσα στα emails της παραγγελίας</strong> αντί για ξεχωριστό email.</li>
-          <li><strong>Ένα κουμπί εκτύπωσης</strong> (δύο PDF όταν η επιλογή έχει και BOX NOW) και μία «Δημιουργία Vouchers» που αναγνωρίζει μόνη της το BOX NOW.</li>
-          <li><strong>Cron και με URL</strong> (μυστικό κλειδί), για hosting χωρίς cron εντολών. Μετά από ενημέρωση, τα νέα events/πίνακες/δικαιώματα μπαίνουν μόνα τους.</li>
-          <li>BOX NOW Parcel ID, στήλη «Τύπος», ελληνικές ενδείξεις status, σχόλιο πελάτη στο voucher, νέα σελίδα ρυθμίσεων.</li>
-          <li>Ασφάλεια/διορθώσεις: οι κωδικοί API δεν εμφανίζονται πια· ποτέ δύο vouchers στην ίδια παραγγελία· η αυτόματη ολοκλήρωση αγνοεί ακυρωμένες παραγγελίες· μετά από ακύρωση η καρτέλα δίνει νέο voucher· το «Ενημέρωση» του Manifest δουλεύει· η απεγκατάσταση κρατά το ιστορικό αποστολών.</li>
-        </ul>
-        <h3>v1.0.0 — Πρώτη έκδοση για OpenCart 4</h3>
-        <p style="color:#666;">Πλήρες port του Courier Center από το WooCommerce στο OpenCart 4, με όλες τις λειτουργίες:</p>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>Δημιουργία &amp; εκτύπωση voucher</strong> (κανονικά, BOX NOW, επιστροφικά, πολλαπλά τεμάχια).</li>
-          <li><strong>BOX NOW στο checkout</strong> — εμφανίζεται μόνο όταν επιλεγεί μέθοδος Courier Center, με επιλογή locker από χάρτη ή αυτόματη ανάθεση.</li>
-          <li><strong>BOX NOW προεπιλεγμένο &amp; κλειδωμένο</strong> — προαιρετική ρύθμιση ώστε το BOX NOW να εμφανίζεται ήδη τσεκαρισμένο όταν ο πελάτης διαλέξει μέθοδο Courier Center.</li>
-          <li><strong>Μέθοδοι αποστολής που διαχειρίζεται το plugin</strong> — voucher δημιουργείται μόνο για τις επιλεγμένες μεθόδους· χειροκίνητη παράκαμψη με επιβεβαίωση· στήλη μεθόδου στη λίστα παραγγελιών.</li>
-          <li><strong>Αντικαταβολή (COD)</strong> — πλήρης υποστήριξη με σωστό ποσό στο voucher.</li>
-          <li><strong>Σωστή μετατροπή μονάδων</strong> — βάρος/διαστάσεις μετατρέπονται σε kg/cm βάσει των weight/length classes του OpenCart (καταστήματα σε γραμμάρια/ίντσες δεν μπλοκάρουν).</li>
-          <li><strong>Αυτόματη δημιουργία</strong> σε αλλαγή status, <strong>παρακολούθηση</strong> (cron) με auto-complete, <strong>tracking στα emails</strong>, <strong>Manifest</strong> παραλαβής, <strong>μαζικές ενέργειες</strong>.</li>
-          <li><strong>Αυτόματη ενημέρωση</strong> από GitHub Releases (όπως το WooCommerce): banner ειδοποίησης στο admin όταν βγαίνει νέα έκδοση + 1-click ενημέρωση. Επίσης φόρμα αναφοράς προβλήματος &amp; in-admin Οδηγίες.</li>
-        </ul>
-      </div>
+<p class="lead">Με αυτό το extension βγάζετε vouchers της Courier Center κατευθείαν από τις παραγγελίες του καταστήματός σας, χωρίς να ξαναγράφετε στοιχεία πουθενά. Οι οδηγίες είναι γραμμένες βήμα-βήμα· αν ξεκινάτε τώρα, διαβάστε πρώτα το «Ξεκινήστε εδώ».</p>
+<!-- ─── Περιεχόμενα ─── -->
+<div class="card">
+<h2>Περιεχόμενα</h2>
+<div class="toc">
+<p><a href="#cc-start"><b>🚀 Ξεκινήστε εδώ — 5 βήματα</b></a></p>
+<p><b>Α. Στήσιμο</b></p>
+<p>  <a href="#cc-a1">Α1. Εγκατάσταση</a></p>
+<p>  <a href="#cc-a2">Α2. Σύνδεση με τον λογαριασμό σας</a></p>
+<p>  <a href="#cc-a3">Α3. Οι ρυθμίσεις μία-μία</a></p>
+<p>  <a href="#cc-a4">Α4. Παράδειγμα: παράδοση στην πόρτα ή σε BOX NOW</a></p>
+<p><b>Β. Καθημερινή δουλειά</b></p>
+<p>  <a href="#cc-b1">Β1. Βγάζω voucher</a></p>
+<p>  <a href="#cc-b2">Β2. Τυπώνω την ετικέτα</a></p>
+<p>  <a href="#cc-b3">Β3. Παραγγελίες BOX NOW</a></p>
+<p>  <a href="#cc-b4">Β4. Αλλάζω BOX NOW locker</a></p>
+<p>  <a href="#cc-b5">Β5. Ακυρώνω αποστολή</a></p>
+<p>  <a href="#cc-b6">Β6. Πολλές παραγγελίες μαζί</a></p>
+<p>  <a href="#cc-b7">Β7. Λίστα για τον οδηγό (Manifest)</a></p>
+<p><b>Γ. Μετά την αποστολή</b></p>
+<p>  <a href="#cc-c1">Γ1. Πού είναι το δέμα;</a></p>
+<p>  <a href="#cc-c2">Γ2. Τι βλέπει ο πελάτης στο email</a></p>
+<p>  <a href="#cc-c3">Γ3. Επιστροφές</a></p>
+<p><b>Δ. Κάτι δεν πάει καλά</b></p>
+<p>  <a href="#cc-d1">Δ1. Μηνύματα σφάλματος</a></p>
+<p>  <a href="#cc-d2">Δ2. Συχνές ερωτήσεις</a></p>
+<p>  <a href="#cc-d3">Δ3. Επικοινωνία με την Courier Center</a></p>
+<p><a href="#cc-gloss">📖 Λεξικό όρων</a></p>
+<p><a href="#cc-new">⭐ Τι νέο σε κάθε έκδοση</a></p>
+</div>
+</div>
+<!-- ─── Ξεκινήστε εδώ ─── -->
+<div class="card start" id="cc-start">
+<h2>🚀 Ξεκινήστε εδώ — από την εγκατάσταση μέχρι το 1ο voucher</h2>
+<p>Θα χρειαστείτε: το αρχείο <code>couriercenter.ocmod.zip</code> και τα <b>στοιχεία σύνδεσης (API)</b> που σας έστειλε η Courier Center (User Alias, Credential Value, API Key, κεντρικός κωδικός).</p>
+<ol>
+<li><b>Εγκαταστήστε το extension:</b> Extensions → Installer → Upload → διαλέγετε το .zip → Install (+) στη λίστα. Μετά Extensions → Extensions → Shipping → Courier Center → Install (+) → Edit. <a href="#cc-a1">(αναλυτικά)</a></li>
+<li><b>Συνδέστε τον λογαριασμό σας:</b> στη σελίδα ρυθμίσεων, στα «Στοιχεία API», γράφετε τα 4 στοιχεία σύνδεσης → πατάτε «Test &amp; Auto-fill στοιχεία αποστολέα». <a href="#cc-a2">(αναλυτικά)</a></li>
+<li><b>Πείτε στο extension ποια αποστολή είναι Courier Center:</b> στο «Μέθοδοι αποστολής που διαχειρίζεται το plugin» διαλέγετε «Courier Center» → Save (μπλε κουμπί πάνω δεξιά). <a href="#cc-a3-methods">(αναλυτικά)</a></li>
+<li><b>Βγάλτε το πρώτο voucher:</b> Sales → Orders → ανοίγετε μια παραγγελία → κάτω-κάτω, καρτέλα «Courier Center» → «Δημιουργία Voucher». <a href="#cc-b1">(αναλυτικά)</a></li>
+<li><b>Τυπώστε και παραδώστε:</b> πατάτε «Εκτύπωση Voucher (PDF)», κολλάτε την ετικέτα στο δέμα και, όταν έρθει ο οδηγός, του δίνετε το δέμα μαζί με τη <a href="#cc-b7">Λίστα Παράδοσης (Manifest)</a>.</li>
+</ol>
+<div class="tip" style="margin-bottom:0">Έτοιμοι! Από εδώ και πέρα ο πελάτης παίρνει αυτόματα τον αριθμό αποστολής στο email του και η παραγγελία ολοκληρώνεται μόνη της όταν παραδοθεί το δέμα.</div>
+</div>
+<!-- ═══════════ Α. ΣΤΗΣΙΜΟ ═══════════ -->
+<div class="part">Α. Στήσιμο</div>
+<div class="card" id="cc-a1">
+<h2>Α1. Εγκατάσταση</h2>
+<p class="what">Ανεβάζετε το extension στο OpenCart 4 και το ενεργοποιείτε ως μέθοδο αποστολής. Γίνεται μία φορά.</p>
+<div class="step"><div class="n">1</div><div class="t">Στο μενού αριστερά πατήστε <b>Extensions → Installer</b>.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Πατήστε το μπλε κουμπί <b>Upload</b> <span class="mk">1</span> πάνω δεξιά και διαλέξτε το αρχείο <code>couriercenter.ocmod.zip</code> από τον υπολογιστή σας. Όταν ανέβει, εμφανίζεται στη λίστα «Installed Extensions» ως «Courier Center για OpenCart»: πατήστε το πράσινο <b>Install (+)</b> <span class="mk">2</span> στη γραμμή του.</div></div>
+<div class="shot"><img alt="Extensions → Installer" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-install-upload.webp"/><div class="cap">Extensions → Installer</div></div>
+<div class="step"><div class="n">3</div><div class="t">Πηγαίνετε <b>Extensions → Extensions</b> και στη λίστα «Choose the extension type» διαλέξτε <b>Shipping</b> <span class="mk">1</span>. Στη γραμμή «Courier Center» πατήστε το πράσινο <b>Install (+)</b> <span class="mk">2</span> και μετά το μπλε μολύβι <b>Edit</b> <span class="mk">3</span>: ανοίγει η σελίδα ρυθμίσεων.</div></div>
+<div class="shot"><img alt="Extensions → Extensions → Shipping" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-ext-shipping.webp"/><div class="cap">Extensions → Extensions → Shipping</div></div>
+<div class="step"><div class="n">4</div><div class="t">Στο μενού αριστερά, κάτω από το <b>Sales</b>, εμφανίζεται πλέον το <b>Courier Center</b>, με τις σελίδες: Manifest Παραλαβής, Επιστροφές, Ρυθμίσεις, Οδηγίες (αυτή εδώ) και Αναφορά Προβλήματος.</div></div>
+<div class="shot narrow"><img alt="Sales → Courier Center" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-menu.webp" style="max-width:240px"/><div class="cap">Sales → Courier Center</div></div>
+<div class="warn"><b>Προσοχή:</b> το extension χρειάζεται <b>OpenCart 4.0.2.x και PHP 8.0 ή νεότερη</b>. Δεν χρειάζεται FTP, SQL ή «Refresh» στα Modifications.</div>
+<div class="tip"><b>Νέες εκδόσεις:</b> όταν βγει νέα έκδοση, στη σελίδα ρυθμίσεων εμφανίζεται ειδοποίηση. Πατήστε <b>«Έλεγχος για ενημερώσεις» → «Ενημέρωση τώρα»</b>: γίνεται αυτόματα αντίγραφο ασφαλείας και, αν κάτι αποτύχει, επαναφορά. Οι ρυθμίσεις και τα vouchers σας <b>δεν χάνονται</b>. Εναλλακτικά, ανεβάζετε το νέο .zip από το Extensions → Installer, όπως στο βήμα 2.</div>
+</div>
+<div class="card" id="cc-a2">
+<h2>Α2. Σύνδεση με τον λογαριασμό σας</h2>
+<p class="what">Δίνετε στο extension τα στοιχεία σύνδεσης της Courier Center, ώστε να μπορεί να βγάζει vouchers στο όνομά σας.</p>
+<div class="step"><div class="n">1</div><div class="t">Πηγαίνετε <b>Sales → Courier Center → Ρυθμίσεις</b>. Στην ενότητα «Στοιχεία API» <span class="mk">1</span> γράψτε τα 4 στοιχεία ακριβώς όπως σας τα έστειλε η Courier Center:
+    <table style="margin-top:8px">
+<tr><th style="width:220px">Πεδίο</th><th>Τι είναι</th></tr>
+<tr><td>User Alias</td><td>Το όνομα χρήστη σας για τη σύνδεση</td></tr>
+<tr><td>Credential Value</td><td>Ο κωδικός πρόσβασης</td></tr>
+<tr><td>API Key</td><td>Ένα μακρύ κλειδί ασφαλείας</td></tr>
+<tr><td>Main code (Billing Account)</td><td>Ο κεντρικός κωδικός πελάτη σας, της μορφής <code>100-XXXX-XXXX</code></td></tr>
+</table>
+</div></div>
+<div class="step"><div class="n">2</div><div class="t">Πατήστε <b>Test &amp; Auto-fill στοιχεία αποστολέα</b> <span class="mk">2</span>. Το extension ελέγχει ότι τα στοιχεία είναι σωστά, συμπληρώνει μόνο του τα «Στοιχεία Αποστολέα (Έδρα)» από κάτω (επωνυμία, διεύθυνση, Τ.Κ., πόλη, τηλέφωνο) και τα αποθηκεύει.</div></div>
+<div class="shot"><img alt="Sales → Courier Center → Ρυθμίσεις → Στοιχεία API" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-api.webp"/><div class="cap">Sales → Courier Center → Ρυθμίσεις → Στοιχεία API</div></div>
+<div class="ex"><b>Παράδειγμα:</b> Η Courier Center σας έστειλε email με User Alias <code>to_katastima_mou</code> και κεντρικό κωδικό <code>100-1234-5678</code>. Τα αντιγράφετε στα πεδία, μαζί με τον κωδικό και το API Key, και πατάτε «Test &amp; Auto-fill». Σε λίγα δευτερόλεπτα εμφανίζεται πράσινο μήνυμα επιτυχίας και πιο κάτω βλέπετε τη διεύθυνση της αποθήκης σας.</div>
+<div class="warn"><b>Προσοχή:</b> ο κωδικός και το API Key, αφού αποθηκευτούν, εμφανίζονται ως «•••••• αποθηκευμένο». Αν δεν θέλετε να τα αλλάξετε, <b>αφήστε τα πεδία κενά</b>· κενό πεδίο σημαίνει «κράτα τον παλιό». Το κόκκινο κουμπί «Καθαρισμός ρυθμίσεων» στο κάτω μέρος σβήνει <b>όλες</b> τις ρυθμίσεις — μην το πατήσετε κατά λάθος.</div>
+</div>
+<div class="card" id="cc-a3">
+<h2>Α3. Οι ρυθμίσεις μία-μία</h2>
+<p class="what">Όλες βρίσκονται στο <b>Sales → Courier Center → Ρυθμίσεις</b>. Για κάθε ρύθμιση: τι κάνει και τι να βάλετε. Μετά από οποιαδήποτε αλλαγή, πατήστε το μπλε κουμπί <b>Save</b> (δισκέτα) πάνω δεξιά.</p>
+<h3>🚚 Μέθοδος Αποστολής (Checkout)</h3>
+<p>Το extension είναι και μέθοδος αποστολής του καταστήματός σας: εδώ ορίζετε τι βλέπει και τι πληρώνει ο πελάτης στο checkout.</p>
+<table>
+<tr><th style="width:190px">Status <span class="mk">1</span></th><td><b>Τι κάνει:</b> εμφανίζει ή κρύβει τη μέθοδο «Courier Center» στο checkout.<br/><b>Τι να βάλω:</b> Enabled.</td></tr>
+<tr><th>Shipping Cost <span class="mk">2</span></th><td><b>Τι κάνει:</b> το σταθερό κόστος αποστολής που πληρώνει ο πελάτης.<br/><b>Τι να βάλω:</b> το ποσό σας, π.χ. <code>3.00</code>.</td></tr>
+<tr><th>Cash-on-Delivery Fee <span class="mk">3</span></th><td><b>Τι κάνει:</b> αν βάλετε ποσό, στο checkout εμφανίζεται και δεύτερη επιλογή, «Courier Center — Αντικαταβολή», με κόστος αποστολής + αυτή τη χρέωση.<br/><b>Τι να βάλω:</b> <code>0</code> αν δεν χρεώνετε επιπλέον την αντικαταβολή (τότε η επιλογή δεν εμφανίζεται).</td></tr>
+<tr><th>Tax Class / Geo Zone / Sort Order <span class="mk">4</span></th><td><b>Τι κάνουν:</b> ο φόρος του κόστους αποστολής, οι περιοχές όπου εμφανίζεται η μέθοδος (π.χ. μόνο Ελλάδα) και η σειρά της ανάμεσα στις άλλες μεθόδους.<br/><b>Τι να βάλω:</b> όπως στις άλλες μεθόδους αποστολής σας. Αν δεν ξέρετε, αφήστε τα όπως είναι.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-checkout.webp"/></div>
+<div class="tip"><b>Αντικαταβολή:</b> το ποσό που εισπράττει ο courier περνά αυτόματα στο voucher όταν ο πελάτης πλήρωσε με τον τρόπο πληρωμής <b>Cash On Delivery</b> του OpenCart 4. Η επιλογή «Courier Center — Αντικαταβολή» αφορά μόνο την επιπλέον χρέωση.</div>
+<h3>📍 Σημεία αποστολής (υποκωδικοί) — μόνο αν στέλνετε από πολλά σημεία</h3>
+<p>Αν τα δέματα φεύγουν από περισσότερα από ένα σημεία (π.χ. κατάστημα και αποθήκη), η Courier Center σας δίνει έναν <b>υποκωδικό</b> για κάθε σημείο. Αν στέλνετε από ένα μόνο σημείο, <b>προσπεράστε αυτή την ενότητα</b>.</p>
+<div class="step"><div class="n">1</div><div class="t">Πατήστε <b>+ Προσθήκη υποκωδικού</b> <span class="mk">1</span> και γράψτε τον υποκωδικό και ένα όνομα που να καταλαβαίνετε (π.χ. «Αποθήκη Πειραιά»).</div></div>
+<div class="step"><div class="n">2</div><div class="t">Στη <b>Χρέωση</b> <span class="mk">2</span> διαλέξτε αν οι αποστολές αυτού του σημείου χρεώνονται στον ίδιο τον υποκωδικό ή στον κεντρικό σας κωδικό (ρωτήστε τη Courier Center αν δεν ξέρετε).</div></div>
+<div class="step"><div class="n">3</div><div class="t">Πατήστε <b>Test &amp; Auto-fill</b> <span class="mk">3</span> στη γραμμή: συμπληρώνονται η διεύθυνση και ο σταθμός του σημείου.</div></div>
+<div class="step"><div class="n">4</div><div class="t">Στο <b>Προεπιλεγμένο σημείο</b> <span class="mk">4</span> διαλέξτε από πού φεύγουν συνήθως τα δέματα, και αποθηκεύστε.</div></div>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-points.webp"/></div>
+<div class="tip">Το «Test &amp; Auto-fill» ενός υποκωδικού δημιουργεί μία δοκιμαστική αποστολή και την ακυρώνει αμέσως. Δεν χρεώνεστε.</div>
+<h3>📍 Στοιχεία Παραλήπτη — Πεδίο αριθμού διεύθυνσης</h3>
+<table>
+<tr><th style="width:170px">Τι κάνει</th><td>Το voucher παίρνει τη διεύθυνση αποστολής της παραγγελίας. Αν το checkout σας ζητά τον <b>αριθμό</b> της διεύθυνσης σε ξεχωριστό κουτάκι (ένα Custom Field από το <b>Customers → Custom Fields</b>), το extension πρέπει να ξέρει ποιο είναι, για να γράψει σωστά τη διεύθυνση στο voucher.</td></tr>
+<tr><th>Τι να βάλω</th><td>Αν ο πελάτης γράφει οδό και αριθμό στο ίδιο κουτάκι: αφήστε την προεπιλογή <b>«Ο αριθμός είναι ήδη μέσα στη διεύθυνση»</b>. Αλλιώς ανοίξτε τη λίστα <span class="mk">1</span> και διαλέξτε το Custom Field του αριθμού.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-recipient.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> έχετε φτιάξει Custom Field «Αριθμός» στη διεύθυνση. Το διαλέγετε στη λίστα. Από εκεί και πέρα, παραγγελία με «Αγίου Δημητρίου» + «15» βγαίνει στο voucher ως «Αγίου Δημητρίου 15».</div>
+<h3>✉️ Tracking &amp; Email</h3>
+<table>
+<tr><th style="width:170px">Tracking URL <span class="mk">1</span></th><td><b>Τι κάνει:</b> ο σύνδεσμος που πατά ο πελάτης για να δει πού είναι το δέμα.<br/><b>Τι να βάλω:</b> αφήστε την προεπιλογή <code>https://www.courier.gr/track/result?tracknr={{ '{{' }}tracking}}</code>. Το <code>{{ '{{' }}tracking}}</code> αντικαθίσταται μόνο του με τον αριθμό αποστολής.</td></tr>
+<tr><th>Tracking σε emails <span class="mk">2</span></th><td><b>Τι κάνει:</b> προσθέτει τον αριθμό αποστολής και το link παρακολούθησης στα emails που στέλνει το OpenCart 4 στον πελάτη (<a href="#cc-c2">δείτε πώς φαίνεται</a>).<br/><b>Τι να βάλω:</b> Ενεργό (προτείνεται).</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-tracking.webp"/></div>
+<h3>📦 BOX NOW</h3>
+<p><b>Πώς λειτουργεί:</b> το BOX NOW <b>δεν</b> είναι ξεχωριστή μέθοδος αποστολής του extension. Είναι μια <b>επιπλέον επιλογή παράδοσης</b> που εμφανίζεται στο checkout κάτω από τις μεθόδους αποστολής που θα ορίσετε εδώ. Όταν ο πελάτης διαλέξει μία από αυτές τις μεθόδους, βλέπει την επιλογή «Παράδοση σε BOX NOW Locker» και αποφασίζει αν θα παραλάβει το δέμα στη διεύθυνσή του ή από locker, ανάλογα με τις ρυθμίσεις σας.</p>
+<table>
+<tr><th style="width:170px">BOX NOW Checkout <span class="mk">1</span></th><td><b>Τι κάνει:</b> ενεργοποιεί τη δυνατότητα παραλαβής από BOX NOW Locker στο checkout (<a href="#cc-b3">δείτε τι βλέπει ο πελάτης</a>).<br/><b>Τι να βάλω:</b> Ενεργό, αν θέλετε να προσφέρετε BOX NOW.</td></tr>
+<tr><th>Προεπιλεγμένο BOX NOW <span class="mk">2</span></th><td><b>Τι κάνει:</b> σε όλες τις μεθόδους που διαλέξατε στο «Εμφάνιση σε μεθόδους» <span class="mk">3</span>, η παραλαβή από BOX NOW Locker εμφανίζεται ήδη επιλεγμένη και ο πελάτης <b>δεν μπορεί να την αποεπιλέξει</b> όσο μένει σε αυτή τη μέθοδο.<br/><b>Τι να βάλω:</b> «Όχι», ώστε ο πελάτης να επιλέγει μόνος του (<a href="#cc-a4">Α4</a>). «Ναι» μόνο αν στέλνετε <b>όλα</b> τα δέματα σε lockers.</td></tr>
+<tr><th>Εμφάνιση σε μεθόδους <span class="mk">3</span></th><td><b>Τι κάνει:</b> σε ποιες μεθόδους αποστολής θα εμφανίζεται η δυνατότητα παραλαβής από BOX NOW Locker. Σε όσες δεν επιλέξετε, το BOX NOW δεν εμφανίζεται καθόλου. Για περισσότερες από μία, κρατήστε πατημένο το <b>Ctrl</b> όσο κάνετε κλικ.<br/><b>Τι να βάλω:</b> «Courier Center». Όχι μεθόδους άλλων μεταφορέων.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-boxnow.webp"/></div>
+<h3 id="cc-a3-methods">🚚 Μέθοδοι αποστολής που διαχειρίζεται το plugin</h3>
+<table>
+<tr><th style="width:170px">Διαχειρίσιμες μέθοδοι <span class="mk">1</span></th><td><b>Τι κάνει:</b> λέει στο extension ποιες παραγγελίες είναι για Courier Center. Μόνο γι' αυτές βγαίνουν vouchers αυτόματα ή μαζικά.<br/><b>Τι να βάλω:</b> <b>υποχρεωτικά</b> το «Courier Center». Μην επιλέξετε μεθόδους άλλων μεταφορέων.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-methods.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> το κατάστημά σας έχει δύο μεθόδους αποστολής, «Courier Center» και «Flat Rate» που τη χρησιμοποιείτε για άλλο μεταφορέα. Επιλέγετε μόνο το «Courier Center». Έτσι, όταν μαζικά βγάζετε vouchers, οι παραγγελίες του άλλου μεταφορέα παραλείπονται και δεν φεύγει κατά λάθος δέμα με λάθος μεταφορέα.</div>
+<h3>🖨️ Εκτύπωση Voucher</h3>
+<p>Διαλέξτε μορφή ανάλογα με τον εκτυπωτή και τις ετικέτες σας — μία για τα κανονικά vouchers <span class="mk">1</span> και μία για τα BOX NOW <span class="mk">2</span>.</p>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-print.webp"/></div>
+<table>
+<tr><th style="width:260px">Έχω…</th><th>Διαλέγω</th></tr>
+<tr><td>Κανονικό εκτυπωτή, απλές σελίδες A4 ή λευκά αυτοκόλλητα 3 θέσεων</td><td>A4 — 3 θέσεις, μη προεκτυπωμένο (προεπιλογή)</td></tr>
+<tr><td>Προεκτυπωμένα αυτοκόλλητα της Courier Center, 3 θέσεων</td><td>A4 — 3 θέσεις, προεκτυπωμένο</td></tr>
+<tr><td>Αυτοκόλλητα A4 με 4 θέσεις (2×2)</td><td>A4 — 4 θέσεις 100x150mm</td></tr>
+<tr><td>Θερμικό εκτυπωτή ετικετών</td><td>Το μέγεθος της ετικέτας σας: 205×100, 100×150 ή 100×170 mm</td></tr>
+</table>
+<h3 id="cc-a3-pickup">🚚 Παραλαβή από τον courier</h3>
+<table>
+<tr><th style="width:170px">Σε παραλαβή → status <span class="mk">1</span></th><td><b>Τι κάνει:</b> μόλις ο courier παραλάβει το δέμα από εσάς, η παραγγελία αλλάζει αυτόματα στην κατάσταση που διαλέγετε (π.χ. «Shipped»). Χρήσιμο ιδίως για BOX NOW, όπου η παράδοση καταγράφεται μόνο όταν ο πελάτης ανοίξει τη θυρίδα, και ως τότε η παραγγελία θα έμενε «Processing».<br/><b>Τι να βάλω:</b> αν το θέλετε, διαλέξτε κατάσταση. Αν το αφήσετε «Ανενεργό», δεν αλλάζει τίποτα.</td></tr>
+<tr><th>Email στον πελάτη <span class="mk">2</span></th><td><b>Τι κάνει:</b> ο πελάτης παίρνει email «Η παραγγελία στάλθηκε» με τον αριθμό αποστολής και το link παρακολούθησης. Στέλνεται μία φορά ανά αποστολή.<br/><b>Τι να βάλω:</b> «Ναι» (προτείνεται).</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-pickup.webp"/></div>
+<h3 id="cc-a3-auto">🤖 Αυτόματη Ολοκλήρωση &amp; Δημιουργία</h3>
+<table>
+<tr><th style="width:170px">Σε παράδοση → status <span class="mk">1</span></th><td><b>Τι κάνει:</b> όταν το δέμα παραδοθεί, η παραγγελία περνά μόνη της στην κατάσταση που διαλέγετε. Ακυρωμένες ή επιστραμμένες παραγγελίες δεν αλλάζουν.<br/><b>Τι να βάλω:</b> «Complete» (προτείνεται).</td></tr>
+<tr><th>Email στον πελάτη <span class="mk">2</span></th><td><b>Τι κάνει:</b> ο πελάτης παίρνει email όταν η παραγγελία ολοκληρωθεί έτσι.<br/><b>Τι να βάλω:</b> όπως προτιμάτε.</td></tr>
+<tr><th>Αυτόματη δημιουργία voucher <span class="mk">3</span></th><td><b>Τι κάνει:</b> βγάζει voucher (Επόμενη Μέρα) μόνο του, μόλις μια παραγγελία περάσει στην κατάσταση του «Status που πυροδοτεί» <span class="mk">4</span>. Αν ο πελάτης διάλεξε BOX NOW, βγαίνει BOX NOW voucher.<br/><b>Τι να βάλω:</b> αν το θέλετε, Ενεργό και π.χ. «Processing». Αν προτιμάτε να ελέγχετε κάθε παραγγελία πριν φύγει, αφήστε το ανενεργό.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-auto.webp"/></div>
+<h3 id="cc-a3-cron">⏱️ Αυτόματη ενημέρωση κατάστασης (cron)</h3>
+<p>Κάθε 2 ώρες το extension ρωτά την Courier Center πού βρίσκεται κάθε ενεργή αποστολή (<a href="#cc-c1">Γ1</a>). Στο <b>Τελευταία εκτέλεση</b> <span class="mk">1</span> βλέπετε πότε έγινε τελευταία φορά.</p>
+<table>
+<tr><th style="width:170px">Χωρίς cron job <span class="mk">2</span></th><td><b>Τι κάνει:</b> η ενημέρωση ξεκινά μόνη της με τις επισκέψεις στο κατάστημα (πελατών ή δικές σας), όταν περάσουν 2 ώρες από την προηγούμενη. Δεν χρειάζεται cPanel.<br/><b>Τι να βάλω:</b> «Ναι» — αρκεί για τα περισσότερα καταστήματα.</td></tr>
+<tr><th>Τρόπος 1 / Τρόπος 2 <span class="mk">3</span></th><td><b>Προαιρετικά</b>, για ακριβή ενημέρωση κάθε 2 ώρες ακόμα και χωρίς επισκέψεις: η <b>εντολή</b> για το cPanel → Cron Jobs ή το <b>URL</b> για υπηρεσίες όπως το cron-job.org (με το κουμπί αντιγραφής δίπλα). Το URL έχει μυστικό κλειδί — μην το δημοσιεύετε.</td></tr>
+</table>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-set-cron.webp"/></div>
+<div class="tip">Στο κάτω μέρος της σελίδας υπάρχουν και τα κουμπιά <b>Οδηγίες</b>, <b>Manifest</b>, <b>Επιστροφές</b>, <b>Αναφορά Προβλήματος</b>, <b>Έλεγχος για ενημερώσεις</b> και <b>Επιδιόρθωση εγκατάστασης</b> (<a href="#cc-d2">Δ2</a>).</div>
+</div>
+<div class="card" id="cc-a4">
+<h2>Α4. Παράδειγμα: παράδοση στην πόρτα ή σε BOX NOW</h2>
+<p class="what">Ο πιο συνηθισμένος τρόπος: ο πελάτης διαλέγει στο checkout τη μέθοδο «Courier Center» και, αν θέλει, τσεκάρει από κάτω «Παράδοση σε BOX NOW Locker».</p>
+<div class="step"><div class="n">1</div><div class="t">Στο <b>BOX NOW</b> (<a href="#cc-a3">Α3</a>): <b>BOX NOW Checkout</b> = Ενεργό, <b>Εμφάνιση σε μεθόδους</b> = «Courier Center», <b>Προεπιλεγμένο BOX NOW</b> = Όχι.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Στο <b>Μέθοδοι αποστολής που διαχειρίζεται το plugin</b> (<a href="#cc-a3-methods">Α3</a>): «Courier Center». Save.</div></div>
+<div class="ex"><b>Αποτέλεσμα:</b> ο πελάτης που δεν τσεκάρει το BOX NOW παίρνει το δέμα στη διεύθυνσή του. Ο πελάτης που το τσεκάρει διαλέγει locker (αυτόματα το πλησιέστερο ή από χάρτη) και το voucher βγαίνει BOX NOW (<a href="#cc-b3">Β3</a>).</div>
+<div class="warn"><b>Αντικαταβολή:</b> αυτή τη στιγμή <b>δεν</b> γίνεται αποστολή BOX NOW με αντικαταβολή, και το OpenCart 4 δεν μπορεί να κρύψει τον τρόπο πληρωμής «Cash On Delivery» μόνο για όσους διαλέγουν locker. Αν ο πελάτης διαλέξει BOX NOW με αντικαταβολή, θα το δείτε όταν πάτε να βγάλετε voucher (<a href="#cc-b3">Β3</a>): αλλάζετε τον τρόπο πληρωμής ή πατάτε «Αφαίρεση BOX NOW» για να φύγει στην πόρτα.</div>
+<div class="tip"><b>Ξεχωριστή μέθοδος για lockers;</b> Αν έχετε και άλλο extension αποστολής που θέλετε να λειτουργεί μόνο για lockers, βάλτε <b>μόνο αυτό</b> στο «Εμφάνιση σε μεθόδους» με «Προεπιλεγμένο BOX NOW» = Ναι, και προσθέστε το στις «Διαχειρίσιμες μεθόδους». Έτσι όποιος το διαλέγει παραλαμβάνει υποχρεωτικά από locker.</div>
+</div>
+<!-- ═══════════ Β. ΚΑΘΗΜΕΡΙΝΗ ΔΟΥΛΕΙΑ ═══════════ -->
+<div class="part">Β. Καθημερινή δουλειά</div>
+<div class="card" id="cc-b1">
+<h2>Β1. Βγάζω voucher για μια παραγγελία</h2>
+<p class="what">Το voucher είναι η ετικέτα αποστολής. Με ένα κουμπί, τα στοιχεία του πελάτη στέλνονται στην Courier Center και παίρνετε αριθμό αποστολής (AWB).</p>
+<div class="step"><div class="n">1</div><div class="t">Πηγαίνετε <b>Sales → Orders</b>. Το extension προσθέτει δικές του στήλες στη λίστα: στη στήλη <b>«Μέθοδος»</b> το πράσινο σήμα <span class="mk">1</span> σημαίνει ότι η παραγγελία είναι για Courier Center· η στήλη <b>«Τύπος»</b> <span class="mk">2</span> δείχνει από την αρχή αν ο πελάτης διάλεξε 📦 BOX NOW ή 🚚 Κανονική παράδοση (με διακεκομμένο πλαίσιο όσο δεν έχει βγει voucher)· η στήλη <b>«CC Voucher»</b> <span class="mk">3</span> είναι κενή όσο δεν έχει βγει voucher. Ανοίξτε την παραγγελία με το μπλε κουμπί <b>View</b> (μάτι) <span class="mk">4</span>.</div></div>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-orders-list.webp"/></div>
+<div class="step"><div class="n">2</div><div class="t">Μέσα στην παραγγελία ελέγξτε ότι η <b>Shipping Address</b> (όνομα, διεύθυνση, πόλη και Τ.Κ.) είναι σωστή και ότι υπάρχει <b>τηλέφωνο</b> του πελάτη.<br/>
+    Μετά πηγαίνετε κάτω-κάτω, στο πλαίσιο <b>History</b>, και πατήστε την καρτέλα <b>Courier Center</b>. Στην κορυφή της, η γραμμή «👤 Παραλήπτης» δείχνει τα στοιχεία ακριβώς όπως θα γραφτούν στο voucher. Οι επιλογές διαφέρουν ανάλογα με τον τύπο παράδοσης:
+    <ul style="margin:6px 0 6px 18px">
+<li><b>Κανονική παράδοση:</b> εμφανίζεται η φόρμα δημιουργίας voucher (παρακάτω).</li>
+<li><b>Παράδοση σε BOX NOW Locker</b> (ο πελάτης διάλεξε locker): εμφανίζονται τα στοιχεία του locker και το κουμπί «Δημιουργία BOX NOW Voucher» (<a href="#cc-b3">Β3</a>), <b>όχι</b> η φόρμα. Για να τη στείλετε κανονικά στην πόρτα, πατήστε <b>«Αφαίρεση BOX NOW»</b>.</li>
+</ul>
+    Στην κανονική φόρμα διαλέγετε:
+    <ul style="margin:6px 0 0 18px">
+<li><span class="mk">1</span> <b>Υπηρεσία</b>: Επόμενη Μέρα (συνήθως), ή Αυθημερόν 3 ή 5 ωρών αν το έχετε συμφωνήσει.</li>
+<li><span class="mk">2</span> <b>Πολλαπλά τεμάχια</b>: τσεκάρετε αν η παραγγελία φεύγει σε περισσότερα από ένα κουτιά και γράψτε πόσα.</li>
+<li><span class="mk">3</span> <b>Επιστροφικό</b>: «Χωρίς» στις περισσότερες παραγγελίες· «Προαιρετικό» αν ο παραλήπτης ίσως στείλει κάτι πίσω· «Υποχρεωτικό» αν ο courier πρέπει να πάρει κάτι πίσω κατά την παράδοση.</li>
+<li><span class="mk">4</span> <b>BOX NOW Locker</b>: μόνο αν το δέμα πάει σε locker (<a href="#cc-b4">δείτε Β4</a>).</li>
+<li><b>Σημείο αποστολής</b>: εμφανίζεται μόνο αν έχετε υποκωδικούς.</li>
+</ul>
+</div></div>
+<div class="shot narrow"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-order-form.webp"/></div>
+<div class="step"><div class="n">3</div><div class="t">Πατήστε <b>Δημιουργία Voucher</b> <span class="mk">5</span>. Σε λίγα δευτερόλεπτα εμφανίζεται πράσινο πλαίσιο, «Voucher Δημιουργήθηκε», με τον αριθμό αποστολής (AWB) <span class="mk">1</span>, και από κάτω η τρέχουσα κατάσταση της αποστολής <span class="mk">2</span>.</div></div>
+<div class="shot narrow"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-voucher-created.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> Η κ. Μαρία Παπαδοπούλου παρήγγειλε μια κούπα με αντικαταβολή. Ανοίγετε την παραγγελία, αφήνετε «Επόμενη Μέρα» και «Χωρίς επιστροφικό», και πατάτε «Δημιουργία Voucher». Το ποσό της αντικαταβολής περνάει μόνο του στο voucher — δεν το γράφετε πουθενά.</div>
+<div class="warn"><b>Προσοχή:</b>
+<ul style="margin:4px 0 0 18px">
+<li>Η παραγγελία πρέπει να έχει όνομα, διεύθυνση, πόλη, Τ.Κ. 5 ψηφίων και τηλέφωνο. Για BOX NOW χρειάζεται <b>κινητό</b>.</li>
+<li>Όριο ανά κουτί: 30 kg, 180 cm η μεγαλύτερη πλευρά.</li>
+<li>Αν η παραγγελία έχει μέθοδο αποστολής που <b>δεν</b> είναι Courier Center, θα σας ρωτήσει «Είστε σίγουροι…;» πριν προχωρήσει.</li>
+<li>Δεύτερο voucher για την ίδια παραγγελία δεν βγαίνει όσο το πρώτο είναι ενεργό. Αν χρειάζεστε νέο, <a href="#cc-b5">ακυρώστε πρώτα</a> το παλιό.</li>
+</ul>
+</div>
+</div>
+<div class="card" id="cc-b2">
+<h2>Β2. Τυπώνω την ετικέτα</h2>
+<p class="what">Τυπώνετε το voucher σε PDF και το κολλάτε στο δέμα.</p>
+<div class="step"><div class="n">1</div><div class="t">Στην καρτέλα Courier Center της παραγγελίας (εικόνα του Β1) πατήστε <b>Εκτύπωση Voucher (PDF)</b> <span class="mk">3</span>. Ανοίγει PDF σε νέα καρτέλα.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Τυπώστε το με αυτές τις ρυθμίσεις εκτυπωτή: <b>A4 · Κλίμακα 100% (Actual size) · Περιθώρια None/Minimum</b>.</div></div>
+<div class="step"><div class="n">3</div><div class="t">Κολλήστε την ετικέτα σε επίπεδο σημείο του κουτιού, ώστε το barcode να μη διπλώνει.</div></div>
+<div class="warn"><b>Προσοχή:</b> μην επιλέγετε «Fit to page» / «Προσαρμογή στη σελίδα» — το barcode μικραίνει και μπορεί να μη σκανάρεται. Αν η αποστολή έχει επιστροφικό, το επιστροφικό voucher τυπώνεται αυτόματα μαζί.</div>
+<div class="tip">Για πολλές παραγγελίες μαζί, δείτε <a href="#cc-b6">Β6</a>.</div>
+</div>
+<div class="card" id="cc-b3">
+<h2>Β3. Παραγγελίες BOX NOW</h2>
+<p class="what">Ο πελάτης μπορεί να ζητήσει να παραλάβει το δέμα από ένα αυτόματο locker BOX NOW αντί για παράδοση στην πόρτα.</p>
+<h3>Τι βλέπει ο πελάτης στο checkout</h3>
+<p>Όταν διαλέξει τη μέθοδο αποστολής Courier Center, εμφανίζεται το «Παράδοση σε BOX NOW Locker» <span class="mk">1</span>. Αν το τσεκάρει, διαλέγει <b>Αυτόματη εύρεση</b> <span class="mk">2</span> (το πλησιέστερο locker στη διεύθυνσή του) ή <b>Επιλογή από χάρτη</b> <span class="mk">3</span> (διαλέγει ο ίδιος).</p>
+<div class="shot"><img alt="Checkout του καταστήματος (η εμφάνιση εξαρτάται από το θέμα σας)" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-checkout-boxnow.webp"/><div class="cap">Checkout του καταστήματος (η εμφάνιση εξαρτάται από το θέμα σας)</div></div>
+<h3>Τι βλέπετε εσείς στην παραγγελία</h3>
+<p>Η καρτέλα Courier Center δείχνει το locker που διάλεξε ο πελάτης <span class="mk">1</span> και αντί για τη συνηθισμένη φόρμα έχει ένα κουμπί: <b>Δημιουργία BOX NOW Voucher</b> <span class="mk">3</span>. Από εδώ μπορείτε επίσης να <b>αλλάξετε locker</b> <span class="mk">2</span> (<a href="#cc-b4">Β4</a>) ή να στείλετε την παραγγελία κανονικά στην πόρτα με <b>Αφαίρεση BOX NOW</b> <span class="mk">4</span>.</p>
+<div class="shot narrow"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-boxnow-order.webp"/></div>
+<div class="warn"><b>Προσοχή:</b> αυτή τη στιγμή <b>δεν</b> γίνεται αποστολή BOX NOW με αντικαταβολή. Αν ο πελάτης διάλεξε BOX NOW και πληρωμή «Cash On Delivery», το voucher δεν βγαίνει (στην αυτόματη δημιουργία μπαίνει σημείωση στο ιστορικό της παραγγελίας)· είτε αλλάξτε τον τρόπο πληρωμής είτε πατήστε «Αφαίρεση BOX NOW». Επίσης χρειάζεται κινητό (69…), γιατί εκεί ο πελάτης παίρνει τον κωδικό για να ανοίξει το locker.</div>
+</div>
+<div class="card" id="cc-b4">
+<h2>Β4. Αλλάζω ή διαλέγω BOX NOW locker</h2>
+<p class="what">Αλλάζετε το locker όπου θα πάει το δέμα — ή στέλνετε σε locker μια παραγγελία που ήταν για την πόρτα — χωρίς να ξαναπεράσετε την παραγγελία.</p>
+<h3>Αν η παραγγελία έχει ήδη BOX NOW</h3>
+<div class="step"><div class="n">1</div><div class="t">Στην καρτέλα Courier Center πατήστε <b>Αλλαγή locker</b> (εικόνα του Β3, <span class="mk">2</span>).</div></div>
+<div class="step"><div class="n">2</div><div class="t">Ανοίγει ο χάρτης της BOX NOW. Γράψτε περιοχή ή διεύθυνση στην <b>Αναζήτηση</b> <span class="mk">1</span>, ή μετακινηθείτε στον χάρτη. Πατήστε το locker που θέλετε, στη λίστα <span class="mk">2</span> ή στον χάρτη <span class="mk">3</span>.</div></div>
+<div class="shot"><img alt="Πράσινο = διαθέσιμο, πορτοκαλί = περιορισμένη διαθεσιμότητα" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-boxnow-map.webp"/><div class="cap">Πράσινο = διαθέσιμο, πορτοκαλί = περιορισμένη διαθεσιμότητα</div></div>
+<div class="step"><div class="n">3</div><div class="t">Το νέο locker αποθηκεύεται αμέσως στην παραγγελία και γράφεται σημείωση στο ιστορικό της με το παλιό και το νέο. Πατήστε <b>Δημιουργία BOX NOW Voucher</b>.</div></div>
+<h3>Αν η παραγγελία ήταν για την πόρτα</h3>
+<div class="step"><div class="n">1</div><div class="t">Στη φόρμα του voucher τσεκάρετε <b>BOX NOW Locker</b> <span class="mk">1</span>. Οι δύο επιλογές εμφανίζονται <b>μόνο αφού τσεκάρετε</b> το «BOX NOW Locker». Διαλέξτε <b>Επιλογή από χάρτη</b> <span class="mk">2</span> (ή «Αυτόματη εύρεση» για το πλησιέστερο locker σε ακτίνα 1,5 km από τη διεύθυνση του πελάτη).</div></div>
+<div class="shot narrow"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-boxnow-pick.webp"/></div>
+<div class="step"><div class="n">2</div><div class="t">Διαλέγετε locker στον χάρτη όπως παραπάνω. Το επιλεγμένο locker εμφανίζεται σε πράσινο πλαίσιο, με σύνδεσμο <b>Αλλαγή</b> για να ξανανοίξει ο χάρτης. Μετά πατήστε <b>Δημιουργία Voucher</b>.</div></div>
+<div class="ex"><b>Παράδειγμα:</b> Ο κ. Γιώργος Νικολάου διάλεξε locker στο Χαλάνδρι, αλλά σας παίρνει τηλέφωνο: «Στείλτε το καλύτερα στη Λεωφόρο Πεντέλης, στα Βριλήσσια». Ανοίγετε την παραγγελία → καρτέλα Courier Center → «Αλλαγή locker» → γράφετε «Βριλήσσια» → πατάτε το locker της Λεωφόρου Πεντέλης. Στο ιστορικό της παραγγελίας γράφεται η αλλαγή.</div>
+<div class="warn"><b>Προσοχή:</b> αν έχει ήδη βγει voucher, το κουμπί «Αλλαγή locker» δεν εμφανίζεται. <a href="#cc-b5">Ακυρώστε πρώτα την αποστολή</a> και μετά αλλάξτε locker. Ο πελάτης <b>δεν</b> λαμβάνει email για την αλλαγή — ενημερώστε τον εσείς αν χρειάζεται.</div>
+</div>
+<div class="card" id="cc-b5">
+<h2>Β5. Ακυρώνω αποστολή</h2>
+<p class="what">Ακυρώνετε ένα voucher που βγήκε λάθος ή για παραγγελία που δεν θα φύγει.</p>
+<div class="step"><div class="n">1</div><div class="t">Στην καρτέλα Courier Center της παραγγελίας (εικόνα του Β1) πατήστε <b>Ακύρωση</b> <span class="mk">4</span> και επιβεβαιώστε.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Ο παλιός αριθμός μένει διαγραμμένος (π.χ. <s style="color:#c00">013800012345</s>) για ιστορικό, και η φόρμα εμφανίζεται ξανά για να βγάλετε νέο voucher αν θέλετε.</div></div>
+<div class="ex"><b>Παράδειγμα:</b> βγάλατε voucher και μετά ο πελάτης σας λέει ότι άλλαξε διεύθυνση. Ακυρώνετε την αποστολή, διορθώνετε τη διεύθυνση στην παραγγελία (γρανάζι δίπλα στο <b>Shipping Address</b>) και βγάζετε νέο voucher.</div>
+<div class="warn"><b>Προσοχή:</b> η ακύρωση γίνεται μόνο <b>πριν</b> ο οδηγός παραλάβει το δέμα. Αν το δέμα έχει ήδη σκαναριστεί, επικοινωνήστε με την Courier Center.</div>
+</div>
+<div class="card" id="cc-b6">
+<h2>Β6. Πολλές παραγγελίες μαζί</h2>
+<p class="what">Βγάζετε ή τυπώνετε vouchers για πολλές παραγγελίες με μία κίνηση.</p>
+<div class="step"><div class="n">1</div><div class="t">Στο <b>Sales → Orders</b> τσεκάρετε τις παραγγελίες <span class="mk">1</span>.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Πατήστε ένα από τα κουμπιά της γραμμής <b>«Courier Center — επιλεγμένες»</b> <span class="mk">2</span>, πάνω από τη λίστα:
+    <table style="margin-top:6px">
+<tr><th style="width:220px">Κουμπί</th><th>Τι κάνει</th></tr>
+<tr><td>Δημιουργία Vouchers</td><td>Βγάζει voucher (Επόμενη Μέρα) σε όσες δεν έχουν. Όσες επέλεξαν BOX NOW στο checkout βγαίνουν BOX NOW. Αν έχετε υποκωδικούς, δίπλα εμφανίζεται λίστα για να διαλέξετε από ποιο σημείο φεύγουν.</td></tr>
+<tr><td>Εκτύπωση Vouchers</td><td>Ένα PDF με όλα τα κανονικά vouchers</td></tr>
+<tr><td>Εκτύπωση BOX NOW</td><td>Ένα PDF μόνο με τα BOX NOW vouchers</td></tr>
+<tr><td>Ενημέρωση Status</td><td>Φέρνει την τελευταία κατάσταση των αποστολών</td></tr>
+</table>
+</div></div>
+<div class="step"><div class="n">3</div><div class="t">Επιβεβαιώστε. Στο τέλος εμφανίζεται σύνοψη: πόσα δημιουργήθηκαν και πόσα παραλείφθηκαν και γιατί.</div></div>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-bulk.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> κάθε πρωί τσεκάρετε όλες τις «Processing» παραγγελίες → «Δημιουργία Vouchers». Μετά τις ξανατσεκάρετε → «Εκτύπωση Vouchers», και τυπώνετε όλες τις ετικέτες μαζί.</div>
+<div class="tip">Παραγγελίες που έχουν ήδη voucher ή άλλο μεταφορέα <b>παραλείπονται αυτόματα</b> — δεν χρειάζεται να τις ξεχωρίσετε.</div>
+</div>
+<div class="card" id="cc-b7">
+<h2>Β7. Λίστα για τον οδηγό (Manifest Παραλαβής)</h2>
+<p class="what">Η λίστα με όλα τα δέματα της ημέρας. Την τυπώνετε, ο οδηγός την υπογράφει όταν παραλαμβάνει, και την κρατάτε ως απόδειξη.</p>
+<div class="step"><div class="n">1</div><div class="t">Πηγαίνετε <b>Sales → Courier Center → Manifest Παραλαβής</b> (ή κουμπί <b>Manifest</b> πάνω δεξιά στο Sales → Orders).</div></div>
+<div class="step"><div class="n">2</div><div class="t">Διαλέξτε <b>ημερομηνία</b> <span class="mk">1</span> (ή πατήστε «Σήμερα» / «Χθες»). Αν έχετε υποκωδικούς, διαλέξτε και <b>σημείο</b>. Βλέπετε πόσα vouchers βγήκαν εκείνη τη μέρα <span class="mk">2</span>.</div></div>
+<div class="step"><div class="n">3</div><div class="t">Πατήστε <b>Προβολή Manifest PDF</b> <span class="mk">3</span> (ή «Αποθήκευση ως αρχείο»), τυπώστε το και δώστε το στον οδηγό μαζί με τα δέματα.</div></div>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-manifest.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> έχετε κατάστημα στο κέντρο και αποθήκη στον Πειραιά. Στον οδηγό της αποθήκης δίνετε το Manifest με σημείο «Αποθήκη Πειραιά» — μόνο τα δέματα που παραλαμβάνει εκεί.</div>
+<div class="warn"><b>Προσοχή:</b> αν μια αποστολή έχει δημιουργηθεί αλλά δεν εμφανίζεται στο Manifest, επικοινωνήστε με την Courier Center.</div>
+</div>
+<!-- ═══════════ Γ. ΜΕΤΑ ΤΗΝ ΑΠΟΣΤΟΛΗ ═══════════ -->
+<div class="part">Γ. Μετά την αποστολή</div>
+<div class="card" id="cc-c1">
+<h2>Γ1. Πού είναι το δέμα;</h2>
+<p class="what">Το extension ρωτά την Courier Center για την κατάσταση κάθε ενεργής αποστολής, αυτόματα κάθε 2 ώρες (<a href="#cc-a3-cron">Α3</a>).</p>
+<p>Την κατάσταση τη βλέπετε στη στήλη <b>CC Status</b> της λίστας παραγγελιών και στην καρτέλα Courier Center της παραγγελίας:</p>
+<table>
+<tr><th style="width:250px">Ένδειξη</th><th>Τι σημαίνει</th><th>Τι κάνω</th></tr>
+<tr><td><span class="badge" style="background:#2271b1">Δημιουργήθηκε</span></td><td>Βγήκε voucher, ο οδηγός δεν το έχει παραλάβει ακόμα</td><td>Τίποτα· περιμένει παραλαβή</td></tr>
+<tr><td><span class="badge" style="background:#2271b1">Παραλήφθηκε / Σε μεταφορά</span></td><td>Ο courier πήρε το δέμα και το μεταφέρει</td><td>Τίποτα</td></tr>
+<tr><td><span class="badge" style="background:#2271b1">Στον σταθμό</span></td><td>Το δέμα είναι σε σταθμό της Courier Center</td><td>Τίποτα</td></tr>
+<tr><td><span class="badge" style="background:#2271b1">Σε διανομή</span></td><td>Ο courier το έχει για παράδοση</td><td>Τίποτα</td></tr>
+<tr><td><span class="badge" style="background:#46b450">Παραδόθηκε</span></td><td>Παραδόθηκε στον πελάτη</td><td>Τίποτα· η παραγγελία ολοκληρώνεται μόνη της (<a href="#cc-a3-auto">Α3</a>)</td></tr>
+<tr><td><span class="badge" style="background:#dba617">Αποτυχία</span></td><td>Η παράδοση δεν έγινε (π.χ. απουσία)</td><td>Επικοινωνήστε με τον πελάτη</td></tr>
+<tr><td><span class="badge" style="background:#d63638">Ακυρωμένη</span></td><td>Η αποστολή ακυρώθηκε</td><td>Αν χρειάζεται, βγάλτε νέο voucher</td></tr>
+<tr><td><span class="badge" style="background:#d63638">Επιστράφηκε</span></td><td>Το δέμα γυρίζει σε εσάς</td><td>Επικοινωνήστε με τον πελάτη</td></tr>
+</table>
+<p>Αν θέλετε την κατάσταση αμέσως, πατήστε <b>Ανανέωση</b> στην καρτέλα Courier Center της παραγγελίας ή «Ενημέρωση Status» από τη λίστα (<a href="#cc-b6">Β6</a>). Για το πλήρες ιστορικό, πατήστε τον αριθμό στη στήλη «CC Voucher»: ανοίγει η σελίδα παρακολούθησης στο courier.gr.</p>
+</div>
+<div class="card" id="cc-c2">
+<h2>Γ2. Τι βλέπει ο πελάτης στο email</h2>
+<p class="what">Από τη στιγμή που βγαίνει voucher, τα emails του καταστήματος προς τον πελάτη για την παραγγελία έχουν τον αριθμό αποστολής <span class="mk">1</span> και σύνδεσμο <b>παρακολούθησης</b> <span class="mk">2</span>.</p>
+<div class="shot"><img alt="Το κείμενο γύρω από το πλαίσιο είναι του OpenCart 4 και μπορεί να διαφέρει" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-email-tracking.webp" style="max-width:520px"/><div class="cap">Το κείμενο γύρω από το πλαίσιο είναι του OpenCart 4 και μπορεί να διαφέρει</div></div>
+<div class="warn"><b>Προσοχή:</b> ο αριθμός μπαίνει μόνο σε emails που φεύγουν <b>αφού</b> βγει το voucher — π.χ. όταν αλλάζετε την κατάσταση της παραγγελίας με τσεκαρισμένο το «Notify Customer». Για να φτάνουν σίγουρα τα emails, ρυθμίστε SMTP στο <b>System → Settings → Mail</b>.</div>
+</div>
+<div class="card" id="cc-c3">
+<h2>Γ3. Επιστροφές</h2>
+<p class="what">Ο πελάτης ζητά επιστροφή από τον λογαριασμό του στο κατάστημα· εσείς εγκρίνετε με ένα κλικ και η αποστολή επιστροφής βγαίνει αυτόματα στην Courier Center.</p>
+<h3>1. Ρυθμίζω τις επιστροφές (μία φορά)</h3>
+<p>Στις Ρυθμίσεις, ενότητα <b>Επιστροφές</b> (ή κουμπί «Ρυθμίσεις επιστροφών» στη σελίδα Επιστροφές):</p>
+<ul style="margin:4px 0 0 18px">
+<li><span class="mk">1</span> <b>Ενεργοποίηση επιστροφών</b>: εμφανίζει στους πελάτες το κουμπί «Αίτημα επιστροφής».</li>
+<li><span class="mk">2</span> <b>Απαιτείται έγκριση</b>: «Ναι» = βλέπετε κάθε αίτημα πριν βγει η αποστολή (προτείνεται). «Όχι» = εγκρίνεται αυτόματα.</li>
+<li><span class="mk">3</span> <b>Μέθοδοι επιστροφής</b>: ο πελάτης φέρνει το δέμα σε κατάστημα Courier Center (Drop Off), ο courier το παίρνει από τη διεύθυνσή του (Pickup), ή το αφήνει σε BOX NOW locker.</li>
+<li><span class="mk">4</span> <b>Προθεσμία (ημέρες)</b>: πόσες μέρες μετά την ολοκλήρωση της παραγγελίας μπορεί ο πελάτης να ζητήσει επιστροφή (π.χ. 14· 0 = χωρίς όριο).</li>
+</ul>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-returns-settings.webp"/></div>
+<h3>2. Ο πελάτης κάνει αίτημα</h3>
+<p>Στο <i>My Account → Order History</i> του καταστήματος, στις ολοκληρωμένες παραγγελίες με ενεργό voucher, ο πελάτης βλέπει <b>Αίτημα επιστροφής</b>. Διαλέγει προϊόντα και ποσότητες, γράφει (αν θέλει) τον λόγο, τα στοιχεία του και τη μέθοδο.</p>
+<ul>
+<li><span class="mk">1</span> <b>Προϊόντα</b>: ο πελάτης γράφει πόσα τεμάχια επιστρέφει από κάθε προϊόν (0 = κανένα).</li>
+<li><span class="mk">2</span> <b>Τρόπος επιστροφής</b>: μόνο όσοι έχετε ενεργοποιήσει στις ρυθμίσεις. Με BOX NOW διαλέγει και μέγεθος θυρίδας.</li>
+<li><span class="mk">3</span> <b>Υποβολή αιτήματος</b>: το αίτημα έρχεται σε εσάς για έγκριση.</li>
+</ul>
+<div class="shot"><img alt="Η φόρμα «Αίτημα επιστροφής» όπως τη βλέπει ο πελάτης" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-return-form.webp" style="max-width:520px"/></div>
+<h3>3. Εγκρίνω το αίτημα</h3>
+<p>Ένας αριθμός δίπλα στο μενού <b>Courier Center</b> σας δείχνει πόσα αιτήματα περιμένουν, και λαμβάνετε email «Νέο αίτημα επιστροφής». Στο <b>Sales → Courier Center → Επιστροφές</b> (ή κουμπί <b>Επιστροφές</b> πάνω δεξιά στο Sales → Orders):</p>
+<ul>
+<li><span class="mk">1</span> Το αίτημα που περιμένει: κατάσταση <b>«Σε αναμονή έγκρισης»</b>.</li>
+<li><span class="mk">2</span> Πατήστε <b>Έγκριση</b> ή <b>Απόρριψη</b>. Με την έγκριση βγαίνει η αποστολή επιστροφής και ο πελάτης παίρνει email με τις οδηγίες.</li>
+</ul>
+<div class="shot"><img alt="Λίστα αιτημάτων επιστροφής" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-returns-list.webp"/></div>
+<div class="ex"><b>Παράδειγμα:</b> Η κ. Ελένη Κωνσταντίνου θέλει να επιστρέψει τη μία από τις δύο κούπες που πήρε. Από τον λογαριασμό της πατά «Αίτημα επιστροφής», διαλέγει 1 κούπα και «BOX NOW». Εσείς βλέπετε το αίτημα και πατάτε «Έγκριση». Εκείνη λαμβάνει email με έναν κωδικό BOX NOW και αφήνει το δέμα σε όποιο locker τη βολεύει.</div>
+<h3>Επιστροφή χωρίς αίτημα (από εσάς)</h3>
+<p>Αν ο πελάτης σας πάρει τηλέφωνο: ανοίξτε την παραγγελία, στην καρτέλα <b>Courier Center</b>, ενότητα <b>Επιστροφές</b>, πατήστε <b>+ Νέα επιστροφή</b> (εικόνα του Β1) και διαλέξτε προϊόντα και μέθοδο. Η αποστολή βγαίνει αμέσως. Τσεκάρετε την αποστολή email στον πελάτη αν θέλετε να του πάνε οι οδηγίες.</p>
+<div class="warn"><b>Προσοχή:</b>
+<ul style="margin:4px 0 0 18px">
+<li>Για Pickup, ο πελάτης διαλέγει εργάσιμη μέρα (από την επόμενη, όχι Σάββατο/Κυριακή) και, αν θέλει, διάστημα τουλάχιστον 4 ωρών μεταξύ 09:00 και 17:00.</li>
+<li>Για BOX NOW επιστροφή χρειάζεται ελληνικό κινητό (69…).</li>
+</ul>
+</div>
+<details><summary style="cursor:pointer;color:#2271b1">Τι σημαίνει κάθε κατάσταση αιτήματος;</summary>
+<table style="margin-top:6px">
+<tr><td style="width:220px"><b>Σε αναμονή έγκρισης</b></td><td>Περιμένει την απόφασή σας</td></tr>
+<tr><td><b>Εγκρίθηκε</b></td><td>Η αποστολή επιστροφής ετοιμάζεται εκείνη τη στιγμή</td></tr>
+<tr><td><b>Δημιουργήθηκε αποστολή</b></td><td>Έχει αριθμό αποστολής και παρακολουθείται αυτόματα</td></tr>
+<tr><td><b>Σε έλεγχο</b></td><td>Η Courier Center δεν απάντησε καθαρά· το extension ελέγχει μόνο του αν βγήκε η αποστολή, ώστε να μη βγει δεύτερη</td></tr>
+<tr><td><b>Αποτυχία δημιουργίας</b></td><td>Κάτι πήγε στραβά (το μήνυμα φαίνεται στο αίτημα)· πατήστε «Δημιουργία αποστολής» για νέα προσπάθεια</td></tr>
+<tr><td><b>Απορρίφθηκε</b></td><td>Δεν εγκρίθηκε· ο πελάτης μπορεί να κάνει νέο αίτημα</td></tr>
+</table>
+</details>
+<details style="margin-top:6px"><summary style="cursor:pointer;color:#2271b1">Έχω υποκωδικούς — σε ποιον λογαριασμό πάνε οι επιστροφές;</summary>
+<p style="margin-top:6px">Στο ίδιο σημείο από το οποίο έφυγε η αρχική αποστολή. Αν θέλετε οι επιστροφές ενός σημείου να καταλήγουν αλλού, ορίστε το στο «Λογαριασμοί επιστροφών» των ρυθμίσεων επιστροφών.</p>
+</details>
+</div>
+<!-- ═══════════ Δ. ΚΑΤΙ ΔΕΝ ΠΑΕΙ ΚΑΛΑ ═══════════ -->
+<div class="part">Δ. Κάτι δεν πάει καλά</div>
+<div class="card" id="cc-d1">
+<h2>Δ1. Μηνύματα σφάλματος — τι σημαίνουν και τι κάνετε</h2>
+<table>
+<tr><th style="width:260px">Βλέπω…</th><th>Τι σημαίνει</th><th>Τι κάνω</th></tr>
+<tr><td>Μη έγκυρος ΤΚ παραλήπτη. Πρέπει να είναι 5 ψηφία</td><td>Ο Τ.Κ. της παραγγελίας λείπει ή είναι λάθος</td><td>Διορθώστε τον Τ.Κ. στην παραγγελία (<a href="#cc-b5">Β5</a>) και ξαναπατήστε</td></tr>
+<tr><td>Λείπει το τηλέφωνο / η διεύθυνση / η πόλη / το όνομα παραλήπτη</td><td>Η παραγγελία δεν έχει αυτό το στοιχείο</td><td>Συμπληρώστε το στην παραγγελία και ξαναπατήστε</td></tr>
+<tr><td>Το BOX NOW δεν υποστηρίζει αντικαταβολή</td><td>Ο πελάτης διάλεξε BOX NOW και αντικαταβολή</td><td>Πατήστε «Αφαίρεση BOX NOW» ή αλλάξτε τρόπο πληρωμής (<a href="#cc-b3">Β3</a>)</td></tr>
+<tr><td>Το βάρος (… kg) υπερβαίνει το μέγιστο των 30 kg</td><td>Το βάρος των προϊόντων ξεπερνά τα 30 kg ανά κουτί</td><td>Τσεκάρετε «Πολλαπλά τεμάχια» και μοιράστε σε περισσότερα κουτιά, ή διορθώστε το βάρος του προϊόντος</td></tr>
+<tr><td>Η μεγαλύτερη πλευρά υπερβαίνει τα 180 cm</td><td>Οι διαστάσεις κάποιου προϊόντος είναι πολύ μεγάλες</td><td>Ελέγξτε τις διαστάσεις του προϊόντος στο Catalog → Products</td></tr>
+<tr><td>Επιλέξατε BOX NOW αλλά δεν επιλέξατε locker από τον χάρτη</td><td>Τσεκάρατε «Επιλογή από χάρτη» χωρίς να πατήσετε locker</td><td>Διαλέξτε locker ή επιλέξτε «Αυτόματη εύρεση»</td></tr>
+<tr><td>Σφάλμα σύνδεσης</td><td>Το site δεν μπόρεσε να μιλήσει με την Courier Center (προσωρινό)</td><td>Δοκιμάστε ξανά σε λίγα λεπτά. Αν συνεχίζει, <a href="#cc-d3">αναφέρετέ το</a></td></tr>
+<tr><td>Σφάλμα από το API: …</td><td>Η Courier Center απέρριψε το voucher· ο λόγος ακολουθεί</td><td>Διαβάστε τον λόγο· αν αφορά στοιχεία σύνδεσης, ξαναπατήστε «Test &amp; Auto-fill» (<a href="#cc-a2">Α2</a>)</td></tr>
+<tr><td>Η σύνδεση έληξε ή ο server απάντησε με σφάλμα</td><td>Η σελίδα ήταν ανοιχτή πολύ ώρα και το OpenCart 4 σας αποσύνδεσε</td><td>Πατήστε F5 (και συνδεθείτε ξανά αν χρειαστεί) και ξαναδοκιμάστε</td></tr>
+<tr><td>Δεν υπάρχουν αποστολές για αυτή την ημερομηνία</td><td>Στο Manifest: δεν βγήκε κανένα voucher εκείνη τη μέρα (ή σε εκείνο το σημείο)</td><td>Ελέγξτε ημερομηνία και σημείο</td></tr>
+</table>
+</div>
+<div class="card" id="cc-d2">
+<h2>Δ2. Συχνές ερωτήσεις</h2>
+<h3>Βγήκε voucher Courier Center σε παραγγελία άλλου μεταφορέα. Γιατί;</h3>
+<p>Στις Ρυθμίσεις, στο «Μέθοδοι αποστολής που διαχειρίζεται το plugin», αφήστε <b>μόνο</b> το «Courier Center» (<a href="#cc-a3-methods">Α3</a>). Ακυρώστε το λάθος voucher (<a href="#cc-b5">Β5</a>).</p>
+<h3>Δεν βλέπω το μενού «Courier Center» ή την καρτέλα στην παραγγελία.</h3>
+<p>Ελέγξτε στο Extensions → Extensions → Shipping ότι το «Courier Center» είναι εγκατεστημένο (Install). Αν είναι, πατήστε <b>Επιδιόρθωση εγκατάστασης</b> στο κάτω μέρος των Ρυθμίσεων: ξαναστήνει ό,τι λείπει χωρίς να σβήσει δεδομένα. Ο χρήστης σας χρειάζεται επίσης δικαίωμα πρόσβασης (System → Users → User Groups).</p>
+<h3>Ο πελάτης δεν βλέπει τον αριθμό αποστολής στο email.</h3>
+<p>Το email στάλθηκε πριν βγει το voucher (<a href="#cc-c2">Γ2</a>), ή το «Tracking σε emails» είναι ανενεργό στις Ρυθμίσεις.</p>
+<h3>Η κατάσταση των αποστολών δεν αλλάζει.</h3>
+<p>Στο κάτω μέρος των Ρυθμίσεων δείτε την «Τελευταία εκτέλεση» (<a href="#cc-a3-cron">Α3</a>). Αν είναι παλιά, ελέγξτε ότι το «Χωρίς cron job» είναι «Ναι» ή στήστε έναν από τους δύο τρόπους cron.</p>
+<h3>Βλέπω μηνύματα «Notice» / «Warning» στις σελίδες.</h3>
+<p>Είναι μηνύματα PHP που δείχνει το OpenCart 4 όταν είναι ενεργό το <b>System → Settings → Server → Display Errors</b>. Σε κατάστημα σε λειτουργία απενεργοποιήστε το· τα μηνύματα συνεχίζουν να γράφονται στο Error Log.</p>
+<h3>Μπορώ να στείλω BOX NOW με αντικαταβολή;</h3>
+<p>Όχι, αυτή τη στιγμή δεν γίνεται (<a href="#cc-a4">Α4</a>).</p>
+<h3>Το barcode δεν σκανάρεται.</h3>
+<p>Τυπώστε σε κλίμακα 100%, χωρίς «Fit to page» (<a href="#cc-b2">Β2</a>), και ελέγξτε ότι η μορφή εκτύπωσης στις Ρυθμίσεις ταιριάζει με τις ετικέτες σας.</p>
+</div>
+<div class="card" id="cc-d3">
+<h2>Δ3. Επικοινωνία με την Courier Center</h2>
+<p class="what">Για οποιοδήποτε πρόβλημα, στείλτε αναφορά από μέσα από το extension. Φτάνει κατευθείαν στην τεχνική ομάδα, μαζί με τα τεχνικά στοιχεία του site σας — δεν χρειάζεται να τα ψάξετε.</p>
+<div class="step"><div class="n">1</div><div class="t">Πηγαίνετε <a href="{{ url_report }}"><b>Sales → Courier Center → Αναφορά Προβλήματος</b></a>.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Γράψτε σύντομο <b>τίτλο</b> <span class="mk">1</span> και στην <b>περιγραφή</b> <span class="mk">2</span>: τι πατήσατε, τι περιμένατε, τι έγινε, σε ποια παραγγελία και πότε.</div></div>
+<div class="step"><div class="n">3</div><div class="t">Διαλέξτε <b>σοβαρότητα</b> <span class="mk">3</span>, ελέγξτε το <b>email</b> <span class="mk">4</span> όπου θα σας απαντήσουμε, και πατήστε <b>Αποστολή Αναφοράς</b> <span class="mk">5</span>.</div></div>
+<div class="shot"><img alt="" loading="lazy" src="../extension/couriercenter/admin/view/image/docs/oc4-bug-report.webp"/></div>
+<div class="ex"><b>Καλή περιγραφή:</b> «Πατάω “Δημιουργία Voucher” στην παραγγελία #1234 και βγαίνει “Σφάλμα σύνδεσης”. Έγινε σήμερα στις 10:15, σε 2 παραγγελίες. Χθες δούλευε κανονικά.»<br/><b>Όχι τόσο καλή:</b> «Δεν δουλεύει.»</div>
+</div>
+<!-- ═══════════ ΛΕΞΙΚΟ ═══════════ -->
+<div class="card" id="cc-gloss">
+<h2>📖 Λεξικό όρων</h2>
+<dl>
+<dt>Voucher</dt><dd>Η ετικέτα αποστολής που κολλάτε στο δέμα. Έχει barcode και τα στοιχεία αποστολέα και παραλήπτη.</dd>
+<dt>AWB / Αριθμός αποστολής</dt><dd>Ο μοναδικός αριθμός κάθε αποστολής (π.χ. 013800012345). Με αυτόν βρίσκετε το δέμα στο courier.gr.</dd>
+<dt>Κεντρικός κωδικός (Billing Account)</dt><dd>Ο κωδικός πελάτη σας στην Courier Center, μορφής 100-XXXX-XXXX. Σε αυτόν χρεώνονται οι αποστολές.</dd>
+<dt>Υποκωδικός / Σημείο αποστολής</dt><dd>Επιπλέον κωδικός για κάθε σημείο από το οποίο φεύγουν δέματα (κατάστημα, αποθήκη). Μόνο αν στέλνετε από πολλά σημεία.</dd>
+<dt>Έδρα</dt><dd>Το βασικό σας σημείο αποστολής — αυτό του κεντρικού κωδικού.</dd>
+<dt>Manifest (Λίστα Παράδοσης)</dt><dd>Η λίστα με τα δέματα της ημέρας, που υπογράφει ο οδηγός κατά την παραλαβή.</dd>
+<dt>Αντικαταβολή (COD)</dt><dd>Ο πελάτης πληρώνει τον courier κατά την παράδοση. Το ποσό περνά αυτόματα στο voucher.</dd>
+<dt>BOX NOW / Locker</dt><dd>Αυτόματες θυρίδες όπου ο πελάτης παραλαμβάνει το δέμα με κωδικό που παίρνει στο κινητό.</dd>
+<dt>Επιστροφικό</dt><dd>Δεύτερο voucher που τυπώνεται μαζί με το κανονικό, για να σας στείλει ο παραλήπτης κάτι πίσω.</dd>
+<dt>Drop Off / Pickup</dt><dd>Τρόποι επιστροφής: ο πελάτης φέρνει το δέμα σε κατάστημα Courier Center (Drop Off) ή ο courier το παίρνει από τη διεύθυνσή του (Pickup).</dd>
+<dt>Επόμενη Μέρα / Αυθημερόν</dt><dd>Υπηρεσίες παράδοσης: την επόμενη εργάσιμη, ή την ίδια μέρα σε 3 ή 5 ώρες (όπου διατίθεται).</dd>
+<dt>Status / Κατάσταση</dt><dd>Πού βρίσκεται το δέμα τώρα (Δημιουργήθηκε, Σε διανομή, Παραδόθηκε…). Δείτε <a href="#cc-c1">Γ1</a>.</dd>
+<dt>Cron</dt><dd>Η αυτόματη εργασία που κάθε 2 ώρες ενημερώνει την κατάσταση των αποστολών (<a href="#cc-a3-cron">Α3</a>).</dd>
+<dt>Στοιχεία σύνδεσης (API)</dt><dd>User Alias, Credential Value και API Key: τα «κλειδιά» με τα οποία το extension μιλά με την Courier Center στο όνομά σας.</dd>
+</dl>
+</div>
+<!-- ═══════════ ΤΙ ΝΕΟ ═══════════ -->
+<div class="card" id="cc-new">
+<h2>⭐ Τι νέο σε κάθε έκδοση</h2>
 
-      <div class="cc-card" id="cc-intro">
-        <h2>1. Εισαγωγή</h2>
-        <p>Το extension Courier Center για OpenCart σας επιτρέπει να διαχειρίζεστε τις αποστολές σας μέσα από το OpenCart admin, χωρίς ξεχωριστά συστήματα.</p>
-        <table class="cc-tbl">
-          <tr><th style="width:230px;">Λειτουργία</th><th>Περιγραφή</th></tr>
-          <tr><td>Δημιουργία Voucher</td><td>Δημιουργία ετικέτας αποστολής για κάθε παραγγελία</td></tr>
-          <tr><td>Εκτύπωση Ετικέτας</td><td>Εκτύπωση PDF voucher για επικόλληση στο δέμα</td></tr>
-          <tr><td>Ενημέρωση Status</td><td>Αυτόματη παρακολούθηση κατάστασης αποστολής</td></tr>
-          <tr><td>Ακύρωση Αποστολής</td><td>Ακύρωση voucher αν χρειαστεί</td></tr>
-          <tr><td>Μαζικές Ενέργειες</td><td>Δημιουργία &amp; εκτύπωση πολλών vouchers ταυτόχρονα</td></tr>
-          <tr><td>Manifest Παραλαβής</td><td>Εκτύπωση λίστας για τον οδηγό Courier Center</td></tr>
-          <tr><td>Tracking στα Emails</td><td>Αυτόματη αποστολή tracking number στον πελάτη</td></tr>
-          <tr><td>BOX NOW Support</td><td>Αποστολή σε lockers BOX NOW</td></tr>
-          <tr><td>Αντικαταβολή (COD)</td><td>Πλήρης υποστήριξη αποστολών με αντικαταβολή</td></tr>
-          <tr><td>Έλεγχος μεθόδων αποστολής</td><td>Το plugin διαχειρίζεται μόνο τις μεθόδους αποστολής που επιλέγετε</td></tr>
-        </table>
-      </div>
+<h3>v1.1.4</h3>
+<ul style="margin-left:18px">
+<li><b>Νέες οδηγίες</b>, βήμα-βήμα με εικόνες (αυτή η σελίδα)</li>
+</ul>
 
-      <div class="cc-card" id="cc-install">
-        <h2>2. Εγκατάσταση</h2>
-        <ol class="cc-steps">
-          <li><strong>Ανεβάστε</strong> τον φάκελο <code>couriercenter</code> στο <code>extension/</code> του OpenCart (ή μέσω Extensions → Installer με το .zip).</li>
-          <li><strong>Admin → Extensions → Extensions</strong></li>
-          <li>Στο dropdown «Choose the extension type» επιλέξτε <strong>Shipping</strong></li>
-          <li>Βρείτε το <strong>«Courier Center»</strong> και πατήστε το πράσινο κουμπί <strong>Install (+)</strong></li>
-          <li>Πατήστε <strong>Edit (μολύβι)</strong> για τις ρυθμίσεις</li>
-        </ol>
-        <div class="cc-tip"><strong>Αυτόματες ενημερώσεις:</strong> από τις Ρυθμίσεις, το κουμπί «Έλεγχος για ενημερώσεις» κατεβάζει &amp; εφαρμόζει τη νεότερη έκδοση από το GitHub. Τα δεδομένα και οι ρυθμίσεις σας <strong>δεν χάνονται</strong>.</div>
-      </div>
 
-      <div class="cc-card" id="cc-settings">
-        <h2>3. Ρυθμίσεις</h2>
-        <p>Πηγαίνετε: <strong>Extensions → Extensions → Shipping → Courier Center → Edit</strong>.</p>
-
-        <h3>Σύνδεση με το API</h3>
-        <table class="cc-tbl">
-          <tr><th style="width:230px;">Πεδίο</th><th>Περιγραφή</th></tr>
-          <tr><td>User Alias</td><td>Το όνομα χρήστη του API σας</td></tr>
-          <tr><td>Credential Value</td><td>Ο κωδικός πρόσβασης του API. Δεν εμφανίζεται μετά την αποθήκευση· αφήστε το κενό για να μείνει ο αποθηκευμένος.</td></tr>
-          <tr><td>API Key</td><td>Το κλειδί ασφαλείας API (κρυφό, όπως ο κωδικός)</td></tr>
-          <tr><td>Κεντρικός κωδικός (Billing Account)</td><td>Ο κωδικός πελάτη της έδρας (π.χ. 100-XXXX-XXXX)</td></tr>
-        </table>
-        <p>Μόλις βάλετε τα credentials, πατήστε <strong>«Test &amp; Auto-fill»</strong>: ελέγχει τα credentials, συμπληρώνει αυτόματα τα στοιχεία αποστολέα και αποθηκεύει τις ρυθμίσεις.</p>
-
-        <h3>Ρυθμίσεις Εκτύπωσης</h3>
-        <table class="cc-tbl">
-          <tr><th style="width:230px;">Template</th><th>Χρήση</th></tr>
-          <tr><td>pdf</td><td>A4, 3 vouchers/σελίδα — για μη προεκτυπωμένα (plain) αυτοκόλλητα</td></tr>
-          <tr><td>clean</td><td>A4, 3 vouchers/σελίδα — για προεκτυπωμένα αυτοκόλλητα</td></tr>
-          <tr><td>singlepdf_100x150_4up</td><td>A4, 4 vouchers/σελίδα (2×2) — κανονικές &amp; BOX NOW</td></tr>
-          <tr><td>singlepdf / singleclean</td><td>Θερμικός εκτυπωτής 205×100mm</td></tr>
-          <tr><td>singlepdf_100x150 / _100x170</td><td>Θερμικός 100×150mm / 100×170mm</td></tr>
-        </table>
-
-<h3>📮 Πεδίο αριθμού διεύθυνσης</h3>
-        <p>Το voucher χρησιμοποιεί τη διεύθυνση αποστολής του πελάτη· όποιο πεδίο λείπει συμπληρώνεται από τη διεύθυνση χρέωσης. Αν το checkout σας έχει <strong>ξεχωριστό πεδίο «Αριθμός»</strong> (Custom Field τύπου κειμένου στη διεύθυνση, Customers → Custom Fields), επιλέξτε το στις ρυθμίσεις («Στοιχεία Παραλήπτη»): ο αριθμός προστίθεται στη διεύθυνση του voucher, μόνο αν δεν υπάρχει ήδη μέσα της. Στο panel της παραγγελίας φαίνεται η διεύθυνση όπως θα σταλεί.</p>
-
-        <h3>Tracking &amp; Emails</h3>
-        <p>Το πεδίο <strong>«Tracking URL»</strong> καθορίζει τον σύνδεσμο παρακολούθησης και πρέπει να περιέχει το <code>{{'{{tracking}}'}}</code>, που αντικαθίσταται με τον αριθμό αποστολής. Με ενεργό voucher, ο AWB και ο σύνδεσμος μπαίνουν μέσα στα emails της παραγγελίας (ενότητα 10).</p>
-
-        <h3>📦 BOX NOW Widget (Checkout)</h3>
-        <p>Ενεργοποίηση από τη ρύθμιση <strong>«BOX NOW Checkout»</strong>. Εμφανίζεται στο checkout <strong>μόνο όταν ο πελάτης επιλέξει μέθοδο αποστολής Courier Center</strong> (ρυθμίζεται στο «Εμφάνιση σε μεθόδους»). Δύο modes: <em>pick</em> (επιλογή locker από χάρτη) ή <em>auto</em> (αυτόματη ανάθεση στο κοντινότερο).</p>
-        <p><strong>Προεπιλεγμένο BOX NOW</strong>: αν το ενεργοποιήσετε, το BOX NOW εμφανίζεται ήδη τσεκαρισμένο και κλειδωμένο μόλις ο πελάτης διαλέξει μέθοδο Courier Center. Για να το αφαιρέσει, επιλέγει άλλη μέθοδο αποστολής.</p>
-
-        <h3>🚚 Μέθοδοι αποστολής που διαχειρίζεται το plugin</h3>
-        <p>Επιλέγετε ποιες μεθόδους αποστολής αντιστοιχούν στην Courier Center. Το plugin δημιουργεί voucher (αυτόματα, μαζικά ή χειροκίνητα) <strong>μόνο</strong> για παραγγελίες με αυτές τις μεθόδους.</p>
-        <div class="cc-warn">Απαιτείται <strong>τουλάχιστον μία</strong> μέθοδος: αν αποθηκεύσετε χωρίς καμία, μένει η προηγούμενη λίστα και εμφανίζεται μήνυμα. Όσο δεν έχει ρυθμιστεί, το plugin θεωρεί ότι διαχειρίζεται <strong>όλες</strong> τις παραγγελίες. Αν χειροκίνητα βγάλετε voucher σε παραγγελία με άλλη μέθοδο, ζητείται επιβεβαίωση.</div>
-      </div>
-
-      <div class="cc-card" id="cc-create">
-        <h2>4. Δημιουργία Voucher</h2>
-        <p>Για κάθε παραγγελία, από την καρτέλα «Courier Center» στη σελίδα παραγγελίας:</p>
-        <ol class="cc-steps">
-          <li>Ανοίξτε μια παραγγελία (Sales → Orders → View)</li>
-          <li>Πηγαίνετε στην καρτέλα <strong>«Courier Center»</strong></li>
-          <li>Επιλέξτε Υπηρεσία: Επόμενη Μέρα / Αυθημερόν 3ω / Αυθημερόν 5ω</li>
-          <li>Επιλέξτε Επιστροφικό αν χρειάζεται: Χωρίς / Προαιρετικό / Υποχρεωτικό</li>
-          <li>Πολλαπλά τεμάχια αν χρειάζεται: τσεκάρετε «Πολλαπλή Αποστολή» και ορίστε αριθμό</li>
-          <li>Πατήστε <strong>«Δημιουργία»</strong> — εμφανίζεται ο AWB αριθμός</li>
-        </ol>
-        <div class="cc-warn"><strong>Έλεγχος μεθόδου αποστολής:</strong> αν η παραγγελία χρησιμοποιεί μέθοδο που <em>δεν</em> διαχειρίζεται το plugin, πριν τη δημιουργία εμφανίζεται επιβεβαίωση. Η αυτόματη &amp; μαζική δημιουργία τις παραλείπει εντελώς.</div>
-
-        <h3>Σημαντικές προϋποθέσεις</h3>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li>ΤΚ (5 ψηφία), διεύθυνση, πόλη, όνομα &amp; <strong>τηλέφωνο</strong> παραλήπτη συμπληρωμένα. (Ενεργοποιήστε το πεδίο τηλεφώνου: System → Settings → Option → «Telephone Display».)</li>
-          <li>BOX NOW + Αντικαταβολή: δεν επιτρέπεται. Αντικαταβολή εξωτερικού: δεν επιτρέπεται.</li>
-          <li>Μέγιστο βάρος 30 kg/τεμάχιο. Μέγιστες διαστάσεις 180 cm/πλευρά. Μέγιστος γύρος (μήκος + 2×(πλάτος+ύψος)) 300 cm.</li>
-        </ul>
-      </div>
-
-      <div class="cc-card" id="cc-print">
-        <h2>5. Εκτύπωση Ετικέτας</h2>
-        <p><strong>Μεμονωμένη:</strong> από τη σελίδα παραγγελίας (καρτέλα Courier Center ή κουμπί «Voucher PDF») ανοίγει το PDF voucher (τα επιστροφικά εκτυπώνονται αυτόματα μαζί).</p>
-        <p><strong>Μαζική:</strong> από τη λίστα παραγγελιών, τσεκάρετε παραγγελίες → «Εκτύπωση Vouchers». Αν η επιλογή έχει και BOX NOW, μετά το πρώτο PDF εμφανίζεται κουμπί «Άνοιγμα PDF BOX NOW» (τα BOX NOW έχουν δικό τους template).</p>
-        <div class="cc-tip"><strong>Ρυθμίσεις εκτυπωτή:</strong> Paper A4 · Scale 100% (Actual size) · Margins None/Minimum. <strong>Μην</strong> χρησιμοποιείτε «Fit to page».</div>
-      </div>
-
-      <div class="cc-card" id="cc-track">
-        <h2>6. Παρακολούθηση Αποστολών</h2>
-        <p><strong>Manual:</strong> από κάθε παραγγελία «Ενημέρωση Status» (max 1 φορά/ώρα ανά αποστολή — το ίδιο όριο ισχύει και στη μαζική). <strong>Αυτόματη (Cron):</strong> <strong>δεν χρειάζεται cron job</strong>: όπως το WP-Cron του WooCommerce, όταν περάσουν 2 ώρες από την τελευταία εκτέλεση, η επόμενη επίσκεψη (πελάτη ή διαχειριστή) ξεκινά την ενημέρωση στο παρασκήνιο (απενεργοποιείται από τη ρύθμιση «Χωρίς cron job»). Αν προτιμάτε σταθερό πρόγραμμα, στις Ρυθμίσεις → «Αυτόματη ενημέρωση κατάστασης» υπάρχουν έτοιμα για αντιγραφή η εντολή cron (κάθε 2 ώρες) και ένα <strong>URL με μυστικό κλειδί</strong> για hosting χωρίς cron εντολών (π.χ. cron-job.org). Κάθε εκτέλεση ελέγχει έως 200 αποστολές, αγνοεί ακυρωμένες παραγγελίες και, στην παράδοση, <strong>ολοκληρώνει αυτόματα</strong> την παραγγελία (στο πρώτο «Complete» status ή σε αυτό που ορίσατε· «Ανενεργό» για να μην αλλάζει), μόνο αν είναι ακόμα σε εκκρεμότητα/επεξεργασία. Ο πελάτης παίρνει email «Η παραγγελία ολοκληρώθηκε» με τον αριθμό αποστολής· οι παραγγελίες που είχαν μείνει πίσω ολοκληρώνονται χωρίς email. Αν έχετε ορίσει «Σε παραλαβή → status», μόλις ο courier παραλάβει το δέμα η παραγγελία περνά σε εκείνο το status (μία φορά ανά αποστολή) με email «Η παραγγελία στάλθηκε». Τα emails (στάλθηκε, ολοκλήρωση, επιστροφές) φεύγουν και από τη γραμμή εντολών.</p>
-        <h3>Στήλες στη λίστα παραγγελιών</h3>
-        <p>Εμφανίζονται αυτόματα οι στήλες <strong>«Μέθοδος»</strong>, «Τύπος» (📦 BOX NOW / 🚚 Κανονική), «CC Voucher» (με BOX NOW Parcel ID), «CC Status» («Νέα», «Σε διανομή», «Παραδόθηκε», «Αποτυχία», «Ακυρωμένη»…) και «Επιστροφή» (η κατάσταση του αιτήματος επιστροφής).</p>
-        <p>Στη «Μέθοδος» το πράσινο σημαίνει ότι τη διαχειρίζεται το plugin, το γκρι ότι όχι. Το μενού <strong>Sales → Courier Center</strong> έχει: Manifest Παραλαβής, Επιστροφές (με τον αριθμό των αιτημάτων που περιμένουν), Ρυθμίσεις, Οδηγίες και Αναφορά Προβλήματος.</p>
-        <table class="cc-tbl">
-          <tr><th style="width:230px;">Badge</th><th>Σημασία</th></tr>
-          <tr><td>Στον σταθμό / Σε διανομή (μπλε)</td><td>Το δέμα κινείται στο δίκτυο Courier Center</td></tr>
-          <tr><td>Παραδόθηκε (πράσινο)</td><td>Επιτυχής παράδοση — η παραγγελία ολοκληρώνεται αυτόματα</td></tr>
-          <tr><td>Αποτυχία (κίτρινο)</td><td>Αποτυχία παράδοσης — χρειάζεται επικοινωνία</td></tr>
-          <tr><td>Ακυρωμένη / Επιστροφή (κόκκινο)</td><td>Η αποστολή ακυρώθηκε ή επιστράφηκε στον αποστολέα</td></tr>
-        </table>
-      </div>
-
-      <div class="cc-card" id="cc-cancel">
-        <h2>7. Ακύρωση Αποστολής</h2>
-        <p>Από την καρτέλα Courier Center της παραγγελίας πατήστε «Ακύρωση Αποστολής» (με επιβεβαίωση).</p>
-        <div class="cc-warn">Η ακύρωση είναι δυνατή <strong>μόνο πριν</strong> ο οδηγός παραλάβει το δέμα. Μετά την ακύρωση μπορείτε να δημιουργήσετε νέο voucher για την ίδια παραγγελία.</div>
-      </div>
-
-      <div class="cc-card" id="cc-bulk">
-        <h2>8. Μαζικές Ενέργειες</h2>
-        <p>Από τη λίστα παραγγελιών (Sales → Orders) τσεκάρετε παραγγελίες και χρησιμοποιήστε τα κουμπιά της μπάρας Courier Center:</p>
-        <table class="cc-tbl">
-          <tr><th style="width:300px;">Ενέργεια</th><th>Αποτέλεσμα</th></tr>
-          <tr><td>📍 Σημείο (μόνο με υποκωδικούς)</td><td>Από ποιο σημείο φεύγουν τα vouchers της μαζικής δημιουργίας</td></tr>
-          <tr><td>Δημιουργία Vouchers</td><td>Voucher Επόμενης Μέρας για κάθε επιλεγμένη παραγγελία· όσες επέλεξαν BOX NOW στο checkout βγαίνουν BOX NOW</td></tr>
-          <tr><td>Εκτύπωση Vouchers</td><td>Ένα PDF για τα κανονικά και, αν υπάρχουν, δεύτερο PDF για τα BOX NOW</td></tr>
-          <tr><td>Εκτύπωση BOX NOW</td><td>Μόνο τα BOX NOW vouchers της επιλογής, με το template τους</td></tr>
-          <tr><td>Ενημέρωση Status</td><td>Ενημερώνει το status των επιλεγμένων (όσα δεν ελέγχθηκαν την τελευταία ώρα)</td></tr>
-        </table>
-        <div class="cc-tip">Παραγγελίες με υπάρχον voucher παραλείπονται. <strong>Παραγγελίες με μη διαχειρίσιμη μέθοδο αποστολής παραλείπονται επίσης.</strong> Μετά τη μαζική δημιουργία, ελέγξτε το μήνυμα με τα αποτελέσματα.</div>
-      </div>
-
-      <div class="cc-card" id="cc-manifest">
-        <h2>9. Manifest Παραλαβής</h2>
-        <p>Το Manifest είναι η λίστα αποστολών που παραδίδετε στον οδηγό κάθε μέρα.</p>
-        <ol class="cc-steps">
-          <li>Πατήστε το κουμπί <strong>«Manifest»</strong> στη μπάρα της λίστας παραγγελιών (ή <a href="{{ url_manifest }}">εδώ</a>)</li>
-          <li>Επιλέξτε ημερομηνία (Αύριο / Σήμερα / Χθες ή χειροκίνητα) και, με υποκωδικούς, το σημείο</li>
-          <li>«Λήψη Manifest PDF» για προβολή/αποθήκευση</li>
-          <li>Εκτυπώστε και δώστε το στον οδηγό για υπογραφή</li>
-        </ol>
-      </div>
-
-      <div class="cc-card" id="cc-emails">
-        <h2>10. Tracking στα Emails Πελατών</h2>
-        <p>Όταν η παραγγελία έχει ενεργό voucher, ο αριθμός αποστολής και ο σύνδεσμος «Παρακολούθηση Αποστολής» μπαίνουν <strong>μέσα στα emails της παραγγελίας</strong>: στην επιβεβαίωση και σε κάθε αλλαγή status με τσεκαρισμένο το «Notify Customer». Δεν στέλνεται πια ξεχωριστό email.</p>
-        <div class="cc-tip">Αν το voucher δημιουργηθεί αυτόματα με την ίδια αλλαγή status, το email εκείνης της αλλαγής έχει ήδη φύγει: ο αριθμός φαίνεται στο επόμενο email. Το OpenCart 4 στέλνει emails μόνο με ρυθμισμένο mail: System → Settings → Mail → «Mail Engine».</div>
-      </div>
-
-      <div class="cc-card" id="cc-points">
-        <h2>11. Πολλαπλά σημεία αποστολής (υποκωδικοί)</h2>
-        <p>Αν το κατάστημα έχει και άλλα σημεία (π.χ. αποθήκη ή δεύτερο κατάστημα) με δικό τους υποκωδικό της Courier Center:</p>
-        <ol class="cc-steps">
-          <li>Ρυθμίσεις → «Σημεία αποστολής» → <strong>«Προσθήκη υποκωδικού»</strong>, γράψτε τον υποκωδικό και ένα όνομα.</li>
-          <li><strong>«Χρέωση»</strong>: «Στον υποκωδικό» ή «Στον κεντρικό κωδικό» (ο κεντρικός πληρώνει, το σημείο στέλνει).</li>
-          <li><strong>«Test &amp; Auto-fill»</strong> στη γραμμή: ελέγχει τον υποκωδικό και φέρνει τα στοιχεία του. Μετά <strong>Αποθήκευση</strong>.</li>
-          <li><strong>«Προεπιλεγμένο σημείο»</strong>: από εκεί φεύγουν η αυτόματη και η μαζική δημιουργία.</li>
-        </ol>
-        <p>Στην καρτέλα «Courier Center» της παραγγελίας διαλέγετε το σημείο πριν τη δημιουργία· ο σταθμός του σημείου παίρνει την εντολή παραλαβής. Χωρίς υποκωδικούς όλα δουλεύουν όπως πριν.</p>
-      </div>
-
-      <div class="cc-card" id="cc-returns">
-        <h2>12. Επιστροφές</h2>
-        <p>Ενεργοποιήστε τις στις Ρυθμίσεις → «Επιστροφές». Ο πελάτης, σε <strong>ολοκληρωμένη</strong> παραγγελία με ενεργό voucher και μέσα στην προθεσμία, βλέπει «Αίτημα επιστροφής» στη σελίδα της παραγγελίας στον λογαριασμό του, διαλέγει προϊόντα/ποσότητες και τρόπο:</p>
-        <ul style="list-style:disc;margin-left:20px;">
-          <li><strong>Παράδοση σε κατάστημα Courier Center</strong> (προεπιλογή) — αρκεί κινητό ή σταθερό.</li>
-          <li><strong>Παραλαβή από τη διεύθυνσή του (Pickup)</strong>: γράφει διεύθυνση, πόλη και ΤΚ παραλαβής, διαλέγει εργάσιμη ημέρα (από την επόμενη, όχι Σάββατο/Κυριακή) και προαιρετικά διάστημα τουλάχιστον 4 ωρών μέσα στο 09:00–17:00, και μπορεί να αφήσει οδηγίες για τον courier. Αν η έγκριση γίνει αφού περάσει η ημερομηνία, η παραλαβή μεταφέρεται αυτόματα στην επόμενη εργάσιμη.</li>
-          <li><strong>BOX NOW locker</strong> — μέγεθος θυρίδας (Μικρό / Μεσαίο / Μεγάλο) και κινητό· παίρνει «Κωδικό BOX NOW επιστροφής».</li>
-        </ul>
-        <p>Τα αιτήματα εμφανίζονται στο <strong>Sales → «Επιστροφές Courier Center»</strong> (και κουμπί «Επιστροφές» στη λίστα παραγγελιών) και στην καρτέλα της παραγγελίας. Με <strong>«Έγκριση»</strong> δημιουργείται η αποστολή επιστροφής (ένα τεμάχιο, αναφορά το αρχικό AWB) και ο πελάτης λαμβάνει email. Χωρίς «Απαιτείται έγκριση», η αποστολή δημιουργείται αμέσως.</p>
-        <p><strong>Χρέωση επιστροφής:</strong> επιστροφή αποστολής από την Έδρα ή από σημείο με χρέωση στον κεντρικό κωδικό χρεώνεται στον κεντρικό (Requestor)· από υποκωδικό που χρεώνεται ο ίδιος, στον λογαριασμό επιστροφών (Consignee).</p>
-        <p><strong>Νέα επιστροφή από το κατάστημα:</strong> σε κάθε παραγγελία με ενεργό voucher, το panel Courier Center έχει κουμπί «Νέα επιστροφή». Διαλέγετε προϊόντα, μέθοδο (και οι τρεις, ανεξάρτητα από τις ρυθμίσεις του πελάτη) και στοιχεία, και η αποστολή επιστροφής δημιουργείται αμέσως, χωρίς έγκριση και χωρίς προθεσμία. Με το «Αποστολή email στον πελάτη» ο πελάτης παίρνει το email με τα στοιχεία· χωρίς αυτό δεν παίρνει κανένα email. Στη λίστα η επιστροφή φαίνεται ως «Από: Κατάστημα».</p>
-        <p><strong>Ειδοποιήσεις:</strong> όσα αιτήματα περιμένουν ενέργεια φαίνονται ως αριθμός στο μενού «Επιστροφές Courier Center» και ως ειδοποίηση στον Πίνακα ελέγχου και στις σελίδες παραγγελιών· η λίστα παραγγελιών έχει στήλη «Επιστροφή». Για κάθε αίτημα πελάτη το κατάστημα παίρνει email «Νέο αίτημα επιστροφής» (Ρυθμίσεις → Επιστροφές: ναι/όχι και παραλήπτες· κενό = το email του καταστήματος).</p>
-        <div class="cc-tip">Αν μια δημιουργία μείνει «Σε έλεγχο» (π.χ. timeout του API), πατήστε <strong>«Έλεγχος ύπαρξης αποστολής»</strong>: το plugin ψάχνει πρώτα αν δημιουργήθηκε, ώστε να μη βγει ποτέ δεύτερη.</div>
-      </div>
-
-      <div class="cc-card" id="cc-support">
-        <h2>13. Υποστήριξη &amp; Αναφορά Προβλήματος</h2>
-        <p>Για οποιοδήποτε τεχνικό πρόβλημα ή ερώτημα, χρησιμοποιήστε τη <strong>φόρμα Αναφοράς Προβλήματος</strong> — η αναφορά αποστέλλεται απευθείας στην τεχνική ομάδα της Courier Center, μαζί με τα τεχνικά στοιχεία του site σας.</p>
-        <p><a href="{{ url_report }}" class="btn btn-danger btn-lg">🐛 Άνοιγμα φόρμας Αναφοράς Προβλήματος</a></p>
-      </div>
-
-      <div class="cc-card" id="cc-faq">
-        <h2>14. Συχνές Ερωτήσεις (FAQ)</h2>
-        <h3>Γιατί εμφανίζεται σφάλμα κατά τη δημιουργία voucher;</h3>
-        <p>Ελέγξτε: ΤΚ 5 ψηφία, υπάρχει τηλέφωνο (για BOX NOW κινητό 69XXXXXXXX), και τα credentials είναι σωστά (Test &amp; Auto-fill).</p>
-        <h3>Δημιούργησα voucher σε λάθος courier — γιατί;</h3>
-        <p>Στη ρύθμιση <strong>«Μέθοδοι αποστολής που διαχειρίζεται το plugin»</strong> επιλέξτε μόνο τις μεθόδους Courier Center. Έτσι παραγγελίες με άλλον μεταφορέα δεν δημιουργούν αυτόματα αποστολή.</p>
-        <h3>Μπορώ να κάνω BOX NOW με αντικαταβολή;</h3>
-        <p>Όχι. Τα BOX NOW lockers δεν υποστηρίζουν αντικαταβολή.</p>
-        <h3>Πότε εμφανίζεται το tracking στο email;</h3>
-        <p>Σε κάθε email της παραγγελίας (επιβεβαίωση, αλλαγή status με «Notify Customer») όταν υπάρχει ήδη ενεργό voucher.</p>
-        <h3>Η αυτόματη ενημέρωση status δεν λειτουργεί;</h3>
-        <p>Βεβαιωθείτε ότι έχετε στήσει την εντολή cron ή το URL cron (κάθε 2 ώρες) — στις Ρυθμίσεις φαίνεται η «Τελευταία εκτέλεση».</p>
-        <h3>Πώς ενημερώνεται το extension;</h3>
-        <p>Από τις Ρυθμίσεις, κουμπί «Έλεγχος για ενημερώσεις» — κατεβάζει &amp; εφαρμόζει τη νεότερη έκδοση από το GitHub, χωρίς απώλεια δεδομένων.</p>
-      </div>
-
-      <p style="color:#888;font-size:12px;text-align:center;margin:24px 0;">Courier Center για OpenCart · v{{ version }} · courier.gr</p>
-
-    </div>
+<h3>v1.1.3</h3>
+<ul style="list-style:disc;margin-left:20px;">
+<li><strong>Κατάσταση όταν παραλαμβάνει ο courier</strong> (νέο): στις Ρυθμίσεις, «Παραλαβή από τον courier» → «Σε παραλαβή → status», διαλέξτε π.χ. «Shipped». Μόλις ο courier παραλάβει το δέμα, η παραγγελία αλλάζει status και ο πελάτης λαμβάνει (αν το θέλετε) email «Η παραγγελία στάλθηκε» με τον αριθμό αποστολής. Ιδιαίτερα χρήσιμο για BOX NOW, όπου η παράδοση καταγράφεται μόνο όταν ο πελάτης ανοίξει τη θυρίδα. Προεπιλογή: ανενεργό.</li>
+<li><strong>Επιλογή BOX NOW locker από χάρτη στην παραγγελία:</strong> όταν ο πελάτης σας πει στο τηλέφωνο σε ποιο locker θέλει το δέμα, το διαλέγετε από τον χάρτη της BOX NOW στην καρτέλα Courier Center της παραγγελίας: στη φόρμα, με τσεκαρισμένο το «BOX NOW Locker», «Αυτόματη εύρεση» ή «Επιλογή από χάρτη»· σε παραγγελία με BOX NOW, «Αλλαγή locker». Το locker αποθηκεύεται στην παραγγελία (με σημείωση στο ιστορικό) και μπαίνει στο voucher. Με ενεργό voucher ακυρώστε πρώτα την αποστολή.</li>
+<li><strong>Τύπος αποστολής στη λίστα παραγγελιών πριν από το voucher:</strong> η στήλη «Τύπος» δείχνει «📦 BOX NOW» ή «🚚 Κανονική» από τη στιγμή που μπαίνει η παραγγελία (με διακεκομμένο πλαίσιο όσο δεν έχει βγει voucher), ώστε να ξεχωρίζετε τις παραγγελίες BOX NOW χωρίς να τις ανοίγετε.</li>
+</ul>
+<h3>v1.1.2</h3>
+<ul style="list-style:disc;margin-left:20px;">
+<li><strong>BOX NOW σε κάθε checkout:</strong> τη στιγμή που ολοκληρώνεται η παραγγελία γράφεται η τρέχουσα επιλογή BOX NOW του πελάτη, ακόμα κι αν το checkout γράφει την παραγγελία με δικό του τρόπο.</li>
+</ul>
+<h3>v1.1.1</h3>
+<ul style="list-style:disc;margin-left:20px;">
+<li><strong>Διόρθωση BOX NOW:</strong> όταν ο πελάτης άλλαζε τρόπο πληρωμής ή αποστολής στο checkout αφού είχε επιλέξει locker, η επιλογή BOX NOW χανόταν και το voucher έβγαινε κανονική αποστολή. Τώρα η παραγγελία κρατά πάντα την τρέχουσα επιλογή του πελάτη.</li>
+</ul>
+<h3>v1.1.0</h3>
+<ul style="list-style:disc;margin-left:20px;">
+<li><strong>Πολλαπλά σημεία αποστολής (υποκωδικοί)</strong> με χρέωση στο σημείο ή στον κεντρικό κωδικό.</li>
+<li><strong>Επιστροφές από τον πελάτη</strong> (κατάστημα Courier Center ή BOX NOW locker) με έγκριση από εσάς.</li>
+<li><strong>Ίδιες λειτουργίες με το WooCommerce:</strong> πεδίο αριθμού διεύθυνσης (Custom Field), αυτόματη ολοκλήρωση της παραγγελίας στην παράδοση με email «Η παραγγελία ολοκληρώθηκε», ενημέρωση status κάθε 2 ώρες <strong>χωρίς cron job</strong>, κουμπί «Αίτημα Επιστροφής» και στη λίστα παραγγελιών του πελάτη, «Νέα επιστροφή» και ειδοποιήσεις για το κατάστημα, μενού Sales → Courier Center, κουμπί «Εκτύπωση BOX NOW», ενδείξεις «Νέα» / «Επιστροφή» στη λίστα, ενεργοποίηση/απενεργοποίηση κάθε email επιστροφής, τουλάχιστον μία μέθοδος αποστολής στις ρυθμίσεις.</li>
+<li><strong>Tracking μέσα στα emails της παραγγελίας</strong> αντί για ξεχωριστό email.</li>
+<li><strong>Ένα κουμπί εκτύπωσης</strong> (δύο PDF όταν η επιλογή έχει και BOX NOW) και μία «Δημιουργία Vouchers» που αναγνωρίζει μόνη της το BOX NOW.</li>
+<li><strong>Cron και με URL</strong> (μυστικό κλειδί), για hosting χωρίς cron εντολών. Μετά από ενημέρωση, τα νέα events/πίνακες/δικαιώματα μπαίνουν μόνα τους.</li>
+<li>BOX NOW Parcel ID, στήλη «Τύπος», ελληνικές ενδείξεις status, σχόλιο πελάτη στο voucher, νέα σελίδα ρυθμίσεων.</li>
+<li>Ασφάλεια/διορθώσεις: οι κωδικοί API δεν εμφανίζονται πια· ποτέ δύο vouchers στην ίδια παραγγελία· η αυτόματη ολοκλήρωση αγνοεί ακυρωμένες παραγγελίες· μετά από ακύρωση η καρτέλα δίνει νέο voucher· το «Ενημέρωση» του Manifest δουλεύει· η απεγκατάσταση κρατά το ιστορικό αποστολών.</li>
+</ul>
+<h3>v1.0.0 — Πρώτη έκδοση για OpenCart 4</h3>
+<p style="color:#666;">Πλήρες port του Courier Center από το WooCommerce στο OpenCart 4, με όλες τις λειτουργίες:</p>
+<ul style="list-style:disc;margin-left:20px;">
+<li><strong>Δημιουργία &amp; εκτύπωση voucher</strong> (κανονικά, BOX NOW, επιστροφικά, πολλαπλά τεμάχια).</li>
+<li><strong>BOX NOW στο checkout</strong> — εμφανίζεται μόνο όταν επιλεγεί μέθοδος Courier Center, με επιλογή locker από χάρτη ή αυτόματη ανάθεση.</li>
+<li><strong>BOX NOW προεπιλεγμένο &amp; κλειδωμένο</strong> — προαιρετική ρύθμιση ώστε το BOX NOW να εμφανίζεται ήδη τσεκαρισμένο όταν ο πελάτης διαλέξει μέθοδο Courier Center.</li>
+<li><strong>Μέθοδοι αποστολής που διαχειρίζεται το plugin</strong> — voucher δημιουργείται μόνο για τις επιλεγμένες μεθόδους· χειροκίνητη παράκαμψη με επιβεβαίωση· στήλη μεθόδου στη λίστα παραγγελιών.</li>
+<li><strong>Αντικαταβολή (COD)</strong> — πλήρης υποστήριξη με σωστό ποσό στο voucher.</li>
+<li><strong>Σωστή μετατροπή μονάδων</strong> — βάρος/διαστάσεις μετατρέπονται σε kg/cm βάσει των weight/length classes του OpenCart (καταστήματα σε γραμμάρια/ίντσες δεν μπλοκάρουν).</li>
+<li><strong>Αυτόματη δημιουργία</strong> σε αλλαγή status, <strong>παρακολούθηση</strong> (cron) με auto-complete, <strong>tracking στα emails</strong>, <strong>Manifest</strong> παραλαβής, <strong>μαζικές ενέργειες</strong>.</li>
+<li><strong>Αυτόματη ενημέρωση</strong> από GitHub Releases (όπως το WooCommerce): banner ειδοποίησης στο admin όταν βγαίνει νέα έκδοση + 1-click ενημέρωση. Επίσης φόρμα αναφοράς προβλήματος &amp; in-admin Οδηγίες.</li>
+</ul>
+</div>
+<p style="color:#888;font-size:12px;text-align:center;margin:24px 0;">Courier Center για OpenCart 4 · v{{ version }} · courier.gr</p>
+</div>
   </div>
 </div>
 {{ footer }}
